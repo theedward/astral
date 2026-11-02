@@ -1,0 +1,7 @@
+## Interface: 120105, 16001
+## Title: Astral Clock
+## Notes: A large, movable digital clock. /astralclock for options.
+## Author: Astral
+## Version: 1.0.0
+## SavedVariables: AstralClockDB
+Clock.lua

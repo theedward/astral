@@ -1,0 +1,13 @@
+ALTER TABLE sessions ADD COLUMN id TEXT;
+ALTER TABLE sessions ADD COLUMN label TEXT NOT NULL DEFAULT 'Previously connected computer';
+ALTER TABLE sessions ADD COLUMN created INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE sessions ADD COLUMN last_seen INTEGER NOT NULL DEFAULT 0;
+UPDATE sessions SET id=lower(hex(randomblob(16))) WHERE id IS NULL;
+CREATE UNIQUE INDEX sessions_id ON sessions(id);
+CREATE INDEX sessions_user ON sessions(user_id,expires);
+ALTER TABLE snapshots ADD COLUMN hash TEXT;
+ALTER TABLE snapshots ADD COLUMN bytes INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE snapshots ADD COLUMN files INTEGER;
+ALTER TABLE snapshots ADD COLUMN device_label TEXT;
+UPDATE snapshots SET bytes=COALESCE((SELECT SUM(LENGTH(content)) FROM chunks WHERE snapshot_id=snapshots.id),0), hash=(SELECT hash FROM profiles WHERE snapshot_id=snapshots.id);
+CREATE INDEX snapshots_owner ON snapshots(user_id,created);

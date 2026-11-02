@@ -1,0 +1,1 @@
+Provider marks identify their respective services and do not imply partnership. GitHub and CurseForge glyphs are from Simple Icons (CC0-1.0): https://github.com/simple-icons/simple-icons. Wago favicon is from https://wago.io/favicon.ico and remains its owner’s artwork. Downloaded 2026-11-01.

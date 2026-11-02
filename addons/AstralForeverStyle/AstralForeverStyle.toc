@@ -1,0 +1,7 @@
+## Interface: 16001
+## AllowLoadGameType: camelot
+## Title: Astral Forever Style
+## Notes: A fresh EllesmereUI layout with familiar action-bar positions.
+## Version: 0.1.0
+## Dependencies: EllesmereUI
+Style.lua

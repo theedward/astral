@@ -1,0 +1,682 @@
+/* Forged iron, aged copper and a quiet bed of embers. Artwork keeps its own colors. */
+:root {
+  color: #eee5d8;
+  background: #171616;
+  --muted: #ada298;
+  --line: #bca08024;
+  --accent: #eead67;
+}
+body {
+  background: radial-gradient(ellipse at 80% 0, #71371816, transparent 55%), #171616;
+}
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline-color: #ffc180;
+}
+input::placeholder {
+  color: #9c9084;
+}
+.sidebar {
+  background: linear-gradient(100deg, #262321, #1c1b1b 75%);
+  border-right: 1px solid #8b6b424d;
+  box-shadow:
+    inset -3px 0 #0003,
+    6px 0 24px #0002;
+}
+.brand {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-size: 20px;
+  padding-left: 8px;
+  padding-right: 4px;
+  gap: 6px;
+  text-shadow: 0 2px 1px #000;
+}
+.brand-star {
+  color: #efa65d;
+  filter: drop-shadow(0 0 9px #ef842a40);
+}
+.preview-tag {
+  color: #b39e87;
+  border-color: #96734d44;
+  border-radius: 2px;
+  letter-spacing: 1px;
+}
+.nav-label,
+.eyebrow {
+  color: #b79d7b;
+}
+.command-trigger,
+.search-box,
+.path-field,
+.service-input,
+.setting-label select,
+.client-select {
+  background: #12121280;
+  border-color: #ad886333;
+  border-radius: 4px;
+  box-shadow: inset 0 2px 4px #0003;
+  color: #c7b5a0;
+}
+.search-box:focus-within {
+  border-color: #db9a59;
+}
+.nav-item {
+  border-radius: 3px;
+  color: #b1a397;
+}
+.nav-item:hover,
+.nav-item.near {
+  color: #f4e5d2;
+  background: #ddb18a09;
+}
+.nav-item.active {
+  color: #ffd19c;
+  background: linear-gradient(90deg, #c27f3524, #bb7f3408);
+  box-shadow:
+    inset 0 1px #eab07412,
+    inset 0 -1px #0004;
+}
+.nav-item.active:before {
+  background: #efab66;
+  box-shadow: 0 0 8px #f89c3550;
+}
+.nav-item .count {
+  color: #e2c29a;
+  background: #c1883720;
+  border-radius: 3px;
+}
+.topbar {
+  background: linear-gradient(#2b2723, #211e1d);
+  border-bottom-color: #b78e4f33;
+  box-shadow: 0 3px 12px #0002;
+}
+.game strong,
+.account strong,
+.device-card strong {
+  color: #e4d4bf;
+}
+.top-right,
+.retail,
+.device-card small,
+.account small,
+.account > svg,
+.device-icon {
+  color: #b4a28f;
+}
+.avatar {
+  background: #4b3525;
+  color: #f5c58b;
+  border-color: #d4974f44;
+}
+.client-select option,
+.setting-label select option {
+  background: #27221e;
+  color: #f0d9bc;
+}
+h1 {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 32px;
+  letter-spacing: -0.7px;
+  font-weight: 600;
+  color: #f1debf;
+  text-shadow: 0 2px #0008;
+}
+.page-heading p,
+.drawer-desc,
+.discover-card p,
+.scope-item p,
+.source-card p,
+.settings-list p,
+.honest-note p,
+.empty p {
+  color: #b4a595;
+}
+.button {
+  border-radius: 4px;
+}
+.button.primary {
+  background: linear-gradient(#eeb06c, #c38345);
+  border-color: #f4bd7b;
+  border-bottom-color: #875323;
+  color: #2a190d;
+  box-shadow:
+    inset 0 1px #ffdeb08c,
+    0 2px 3px #0007;
+  text-shadow: 0 1px #ffd7a34d;
+}
+.button.primary:hover {
+  background: linear-gradient(#ffc486, #dc9651);
+  box-shadow:
+    inset 0 1px #ffe4bfa0,
+    0 0 14px #ed983b1a;
+}
+.button.secondary {
+  background: linear-gradient(#39332c, #292622);
+  border-color: #a0825c55;
+  color: #e3cfb4;
+  box-shadow:
+    inset 0 1px #ffffff08,
+    0 2px 3px #0004;
+}
+.button.secondary:hover {
+  background: #42382e;
+  border-color: #ce9c6577;
+}
+.status-strip,
+.sync-hero,
+.discover-card,
+.source-card,
+.scope-item,
+.setup-invitation {
+  background: linear-gradient(130deg, #302922b0, #201e1c);
+  border-color: #b48a5140;
+  border-radius: 5px;
+  box-shadow:
+    inset 0 1px #e8cba112,
+    0 3px 10px #0003;
+}
+.status-strip {
+  position: relative;
+  background:
+    radial-gradient(ellipse at 0 100%, #ad511725, transparent 70%),
+    linear-gradient(110deg, #312820, #221f1c);
+}
+.status-strip:after {
+  content: '';
+  position: absolute;
+  right: 7px;
+  top: 7px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #83705b;
+  box-shadow:
+    inset 0 1px #d7ba8c70,
+    0 1px 2px #000;
+}
+.status-orbit,
+.activity-icon,
+.diagram-device {
+  background: #5e3c232b;
+  color: #ecc08d;
+  border-color: #c58c4545;
+  border-radius: 5px;
+}
+.status-strip strong,
+.setup-invitation strong {
+  color: #eddbc0;
+}
+.status-strip p,
+.strip-trailing,
+.setup-invitation p,
+.setup-invitation > span,
+.tiny-star,
+.invitation-icon {
+  color: #bd9e7c;
+}
+.tabs {
+  background: #11111188;
+  border-radius: 4px;
+}
+.tabs button {
+  color: #b4a38e;
+  border-radius: 3px;
+}
+.tabs button.selected {
+  background: linear-gradient(#4b3d30, #352c24);
+  color: #f8d5a4;
+  box-shadow:
+    inset 0 1px #e9b27420,
+    0 1px 3px #0005;
+}
+.addon-list {
+  border-color: #b4966a38;
+  border-radius: 4px;
+  background: #211f1d;
+  box-shadow:
+    inset 0 1px #f3d2a614,
+    0 5px 18px #0002;
+}
+.table-head {
+  color: #b9a182;
+  background: #171615;
+  border-bottom-color: #99784838;
+  letter-spacing: 1.5px;
+}
+.addon-row {
+  border-bottom-color: #d0ac7710;
+}
+.addon-row:nth-child(odd) {
+  background: #ffffff02;
+}
+.addon-row:hover {
+  background: #c3905010;
+}
+.addon-row.chosen {
+  background: #cb8b3920;
+}
+.addon-name {
+  color: #eee2d1;
+}
+.addon-name small,
+.version,
+.status-label,
+.list-footer {
+  color: #b8a58e;
+}
+.addon-icon,
+.addon-icon.original-art,
+.addon-icon.large.original-art {
+  border-radius: 4px;
+  border-color: #c09a6644;
+  background: #171615;
+  box-shadow:
+    inset 0 1px #ffdfb00c,
+    0 2px 3px #0005;
+}
+.addon-icon img {
+  border-radius: 2px;
+}
+.row-action,
+.icon-button {
+  color: #b69b7b;
+}
+.row-action:hover,
+.icon-button:hover,
+.command-item:hover {
+  background: #c8935120;
+  color: #f6c48a;
+}
+.detail-drawer,
+.modal {
+  background: linear-gradient(135deg, #2b2621, #1c1b1a 70%);
+  border-color: #a987594d;
+  box-shadow:
+    -10px 0 40px #0006,
+    inset 1px 1px #ffe1b410;
+}
+.detail-drawer h2,
+.modal h2,
+.section-heading h3 {
+  color: #efdbbb;
+}
+.detail-kv > span,
+.drawer-note,
+.app-footer,
+.app-footer small,
+.honest-note,
+.discover-bottom > span,
+.service-note {
+  color: #b09a80;
+}
+.text-button {
+  color: #efb773;
+}
+.release-notes,
+.honest-note,
+.path-field {
+  background: #13121180;
+  border-color: #a77c4b33;
+}
+.discover-card:hover,
+.setup-invitation:hover {
+  background: #3a2b20;
+  border-color: #ce9b6555;
+}
+.toast {
+  background: #342a20;
+  border-color: #c7955466;
+  color: #f3daba;
+}
+.preview-banner {
+  color: #b99c78;
+}
+::-webkit-scrollbar-track {
+  background: #171616;
+}
+::-webkit-scrollbar-thumb {
+  background: #64503c;
+  border-color: #171616;
+  border-radius: 3px;
+}
+
+.brand-star {
+  font-size: 28px;
+}
+.preview-tag {
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 7px;
+  letter-spacing: 0.7px;
+}
+.source-cell {
+  color: #b8a58e;
+}
+.status-label.local {
+  color: #b3a08b;
+}
+
+/* Darksteel casing. Molten seams stay outside the working surface. */
+:root {
+  background: #101315;
+  --line: #8b92992b;
+}
+body {
+  background:
+    radial-gradient(ellipse at 65% 110%, #cf3e081a, transparent 55%),
+    repeating-linear-gradient(116deg, #ffffff02 0 1px, transparent 1px 6px), #15191c;
+}
+.forge-frame {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  border: 5px solid #30363a;
+  border-radius: 10px;
+  box-shadow:
+    inset 0 0 0 1px #07090b,
+    inset 0 0 0 2px #74797c45,
+    inset 0 0 18px #0008;
+}
+.forge-bolt {
+  position: absolute;
+  width: 13px;
+  height: 13px;
+  background: linear-gradient(145deg, #899097, #3d444a 45%, #151a1e 50%, #596269);
+  clip-path: polygon(25% 0, 75% 0, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0 75%, 0 25%);
+  filter: drop-shadow(0 2px 2px #000);
+}
+.forge-bolt:after {
+  content: '';
+  position: absolute;
+  width: 7px;
+  height: 2px;
+  background: #0b0d0f;
+  top: 5px;
+  left: 3px;
+  transform: rotate(-35deg);
+  box-shadow: 0 1px #a4a8aa55;
+}
+.bolt-tl {
+  left: 6px;
+  top: 6px;
+}
+.bolt-tr {
+  right: 6px;
+  top: 6px;
+}
+.bolt-bl {
+  left: 6px;
+  bottom: 7px;
+}
+.bolt-br {
+  right: 6px;
+  bottom: 7px;
+}
+.lava-channel {
+  position: absolute;
+  overflow: hidden;
+  background: #491100;
+  box-shadow:
+    0 0 0 2px #080a0c,
+    0 0 0 3px #5a5c5d55,
+    0 0 15px #f94e1b77;
+}
+.lava-channel:before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    112deg,
+    #612000 0%,
+    #d33705 12%,
+    #ff8d20 23%,
+    #ffdb68 26%,
+    #ff6b0c 30%,
+    #852500 39%,
+    #e34807 48%,
+    #612000 55%
+  );
+  background-size: 220px 100%;
+  animation: molten-flow 18s linear infinite;
+}
+.lava-channel:after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    118deg,
+    transparent 0 19px,
+    #1a0e09c9 21px 28px,
+    transparent 31px 49px
+  );
+  background-size: 170px 100%;
+  animation: molten-flow 28s linear infinite reverse;
+  opacity: 0.7;
+}
+.lava-floor {
+  bottom: 2px;
+  left: 23px;
+  right: 23px;
+  height: 7px;
+}
+.lava-spine {
+  top: 83px;
+  bottom: 25px;
+  left: 219px;
+  width: 3px;
+  opacity: 0.85;
+}
+.lava-spine:before {
+  background-size: 100% 220px;
+  background-image: repeating-linear-gradient(
+    0deg,
+    #702000,
+    #ffaf32 25%,
+    #dd3d04 45%,
+    #451100 65%,
+    #f96a0e 85%,
+    #702000
+  );
+  animation-name: molten-fall;
+}
+.lava-spine:after {
+  display: none;
+}
+@keyframes molten-flow {
+  to {
+    background-position: 440px 0;
+  }
+}
+@keyframes molten-fall {
+  to {
+    background-position: 0 440px;
+  }
+}
+.sidebar {
+  background:
+    radial-gradient(
+      circle at 11px 197px,
+      #121618 0 2px,
+      #768087 2.5px 3.5px,
+      #242b2f 4px 5px,
+      #07090b 5.5px 6.5px,
+      transparent 7px
+    ),
+    radial-gradient(
+      circle at calc(100% - 12px) 197px,
+      #121618 0 2px,
+      #768087 2.5px 3.5px,
+      #242b2f 4px 5px,
+      #07090b 5.5px 6.5px,
+      transparent 7px
+    ),
+    linear-gradient(
+      0deg,
+      transparent calc(100% - 191px),
+      #060809 calc(100% - 190px),
+      #747b8040 calc(100% - 189px),
+      transparent calc(100% - 188px)
+    ),
+    repeating-linear-gradient(98deg, #ffffff02 0 1px, transparent 1px 4px),
+    linear-gradient(105deg, #31383d, #1f2529 45%, #242b30 96%, #0d1012);
+  border-right: 3px solid #080b0d;
+  box-shadow:
+    inset 3px 0 #929ba02b,
+    inset -3px 0 #4b5359,
+    9px 0 25px #0007;
+}
+.brand {
+  height: 105px;
+  color: #e7d6ba;
+  text-shadow:
+    0 2px #050709,
+    0 -1px #fff5;
+}
+.brand-star {
+  color: #ffaf51;
+  filter: drop-shadow(0 0 12px #ff741c88);
+}
+.nav-item.active {
+  background: linear-gradient(#43484c, #252c31);
+  border: 1px solid #72716b66;
+  border-bottom-color: #06090b;
+  box-shadow:
+    inset 0 1px #c9c7bb30,
+    inset 1px 0 #92918a15,
+    0 3px 6px #0005;
+}
+.nav-item.active:before {
+  left: -13px;
+  height: 23px;
+  width: 3px;
+  background: #ffb756;
+  box-shadow: 0 0 10px #ff5e13a0;
+}
+.command-trigger {
+  background: #11171b;
+  border-color: #59616977;
+  border-bottom-color: #79818a55;
+  box-shadow: inset 0 2px 6px #0009;
+}
+.topbar {
+  background:
+    repeating-linear-gradient(96deg, #ffffff02 0 1px, transparent 1px 5px),
+    linear-gradient(#3a4146, #242b30 45%, #1c2327);
+  border-bottom: 3px solid #080b0e;
+  box-shadow:
+    0 1px #707b8155,
+    0 5px 16px #0005,
+    inset 0 2px #79818740;
+}
+.addon-list {
+  border: 2px solid #070a0c;
+  background: #1c2226;
+  box-shadow:
+    0 0 0 1px #656e7666,
+    inset 0 0 0 1px #565f65,
+    0 8px 24px #0005;
+  border-radius: 3px;
+}
+.table-head {
+  background: linear-gradient(#343c41, #232b30);
+  border-bottom: 2px solid #0b0f12;
+  box-shadow: inset 0 1px #a0a9ad22;
+}
+.addon-row {
+  border-bottom: 1px solid #080b0e;
+  box-shadow: inset 0 1px #c5d0d508;
+}
+.addon-row:hover {
+  background: #38404755;
+}
+.status-strip,
+.discover-card,
+.source-card,
+.scope-item,
+.setup-invitation,
+.sync-hero {
+  background:
+    repeating-linear-gradient(112deg, #ffffff02 0 1px, transparent 1px 7px),
+    linear-gradient(135deg, #343a3e, #232a2f 50%, #1c2226);
+  border: 2px solid #0b0e10;
+  outline: 1px solid #66707866;
+  box-shadow:
+    inset 0 1px #b3bcc044,
+    inset 1px 0 #919da324,
+    inset -1px -1px #0008,
+    0 5px 12px #0006;
+}
+.status-strip {
+  padding-left: 27px;
+  padding-right: 27px;
+  background:
+    radial-gradient(ellipse at 0 100%, #c94c1526, transparent 65%),
+    linear-gradient(130deg, #343b40, #242b30 70%);
+}
+.status-strip:before,
+.status-strip:after {
+  content: '';
+  position: absolute;
+  top: 7px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: linear-gradient(140deg, #9ba3a8, #414950 48%, #151a1e 50%, #616b73);
+  box-shadow:
+    0 1px 2px #000,
+    0 0 0 1px #080b0d;
+}
+.status-strip:before {
+  left: 7px;
+}
+.status-strip:after {
+  right: 7px;
+}
+.button.secondary {
+  background: linear-gradient(#4a5257, #2c343a 52%, #232b30);
+  border: 1px solid #747c81;
+  border-bottom-color: #10161a;
+  color: #eadac3;
+  box-shadow:
+    inset 0 1px #e2e8e52b,
+    0 3px 4px #0007;
+}
+.button.secondary:hover {
+  background: linear-gradient(#596167, #343c42);
+  border-color: #b49a76;
+}
+.button.primary {
+  background: linear-gradient(#ffd184, #ee9b3f 48%, #c46c25);
+  box-shadow:
+    inset 0 1px #fff0c0aa,
+    0 3px 5px #0008,
+    0 0 12px #fa6b191f;
+}
+.detail-drawer,
+.modal {
+  background:
+    repeating-linear-gradient(113deg, #ffffff02 0 1px, transparent 1px 6px),
+    linear-gradient(120deg, #30383d, #1d2428 65%);
+  border-color: #74808866;
+}
+.addon-icon.original-art {
+  background: #0d1216;
+  border-color: #73808a77;
+  box-shadow:
+    0 0 0 1px #05080a,
+    inset 0 1px #b4c5cf11,
+    0 2px 4px #0008;
+}
+.app-footer {
+  padding-bottom: 30px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lava-channel:before,
+  .lava-channel:after {
+    animation: none;
+  }
+}

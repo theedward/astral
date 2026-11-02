@@ -1,0 +1,65 @@
+name: Build and release Astral
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run package:mac
+        if: runner.os == 'macOS'
+      - run: npm run package:windows
+        if: runner.os == 'Windows'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: astral-${{ runner.os }}
+          path: |
+            release/Astral-*-mac-arm64.zip
+            release/Astral-*-win-x64.exe
+          if-no-files-found: error
+          retention-days: 7
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Match the version to the release tag
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: node -e 'if ("v" + require("./package.json").version !== process.env.RELEASE_TAG) process.exit(1)'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: astral-*
+          path: release
+          merge-multiple: true
+      - name: Sign release metadata
+        env:
+          ASTRAL_RELEASE_PRIVATE_KEY: ${{ secrets.ASTRAL_RELEASE_PRIVATE_KEY }}
+        run: node scripts/release-manifest.mjs
+      - name: Publish complete release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh release create "$RELEASE_TAG" release/Astral-* release/astral-update.json --title "Astral $RELEASE_TAG" --generate-notes --verify-tag

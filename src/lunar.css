@@ -1,0 +1,805 @@
+/* Moonstone, midnight and the warm edge of an eclipse. */
+@font-face {
+  font-family: 'Cinzel';
+  src: url('../assets/fonts/Cinzel[wght].ttf') format('truetype');
+  font-weight: 100 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Cinzel Decorative';
+  src: url('../assets/fonts/CinzelDecorative-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
+:root {
+  color: #e5e8f4;
+  background: #0b0e19;
+  --muted: #919ab6;
+  --line: #b2c2ff15;
+  --accent: #b8c5ff;
+}
+body {
+  background: #0b0e19;
+}
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline-color: #bdcaff;
+}
+button {
+  transition:
+    background 180ms,
+    border-color 180ms,
+    color 180ms,
+    transform 260ms var(--spring),
+    box-shadow 180ms;
+}
+.sidebar {
+  z-index: 2;
+  width: 222px;
+  background:
+    radial-gradient(ellipse at 0 0, #30305c3d, transparent 60%),
+    linear-gradient(180deg, #121625, #0e121f);
+  border-right: 1px solid #b0bfff15;
+  box-shadow: 8px 0 36px #05081020;
+}
+.brand {
+  height: 106px;
+  padding: 25px 9px 0;
+  gap: 9px;
+  font-family: Georgia, serif;
+  font-size: 27px;
+  font-weight: 400;
+  letter-spacing: 0.7px;
+  color: #e9eaff;
+}
+.brand-emblem {
+  width: 37px;
+  height: 37px;
+  object-fit: contain;
+  border-radius: 10px;
+  filter: drop-shadow(0 0 8px #8f9cfa1c);
+}
+.preview-tag {
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 7px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  padding: 3px 4px;
+  border-radius: 3px;
+  color: #929dbb;
+  border-color: #afbded26;
+  background: transparent;
+}
+.command-trigger {
+  background: #070b172b;
+  border-color: #afbdff14;
+  color: #9ba5c0;
+  margin-top: 20px;
+  margin-bottom: 32px;
+  border-radius: 7px;
+}
+kbd {
+  color: #8792b0;
+  border-color: #bdc8ff20;
+}
+.nav-label {
+  font-size: 8px;
+  color: #737e9d;
+  letter-spacing: 2px;
+}
+.nav-item {
+  color: #97a1bd;
+  border-radius: 7px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+.nav-item:hover,
+.nav-item.near {
+  color: #e4e9ff;
+  background: #a1afff08;
+}
+.nav-item.active {
+  color: #d4dcff;
+  background: linear-gradient(90deg, #7689e51e, #9dacf109);
+  box-shadow: inset 0 0 0 1px #a2b1ff12;
+}
+.nav-item.active:before {
+  width: 2px;
+  height: 18px;
+  background: #b6c5ff;
+  box-shadow: 0 0 12px #b8c7ff66;
+}
+.nav-item .count {
+  color: #b9c7f1;
+  background: #aab8ff12;
+  font-variant-numeric: tabular-nums;
+}
+.device-icon {
+  color: #8d9bbc;
+}
+.device-card strong,
+.account strong {
+  color: #c9d2e9;
+}
+.device-card small,
+.account small,
+.account > svg {
+  color: #7c89aa;
+}
+.account {
+  border-top-color: #a9baff14;
+}
+.account:hover {
+  background: #a7b8ff05;
+}
+.avatar {
+  background: radial-gradient(circle at 30% 20%, #414c7c, #202943);
+  color: #cbd5ff;
+  border-color: #a7bbff2a;
+}
+.workspace {
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+}
+.celestial-sky {
+  position: absolute;
+  z-index: -1;
+  top: 65px;
+  left: 0;
+  right: 0;
+  height: 375px;
+  pointer-events: none;
+  background:
+    linear-gradient(0deg, #0b0e19, #0b0e1900 85%),
+    linear-gradient(90deg, #0b0e19 0%, #0b0e1922 70%),
+    url('../assets/lunar-sanctuary.png') right 25% / cover no-repeat;
+  opacity: 0.85;
+}
+.topbar {
+  position: relative;
+  z-index: 1;
+  background: #0d1120e6;
+  border-bottom-color: #c0cdff12;
+  padding-left: 40px;
+  padding-right: 40px;
+}
+.game strong {
+  color: #c2cbe1;
+}
+.wow-logo {
+  color: #d5bf8a;
+  border-color: #c9b47d3a;
+  background: #c9b47d08;
+}
+.top-right,
+.retail {
+  color: #8391af;
+}
+.quiet-indicator {
+  background: #97aed1;
+  box-shadow: 0 0 6px #9dc5ff30;
+}
+.client-select {
+  color: #bbc7e4;
+  background: #b1c1ff07;
+  border-color: #bdccff1b;
+  padding: 5px 9px;
+  border-radius: 5px;
+}
+.client-select option,
+.setting-label select option {
+  background: #161e33;
+  color: #e2e7ff;
+}
+main {
+  padding: 52px 40px 0;
+}
+.eyebrow {
+  color: #9baad1;
+  font-size: 8px;
+  letter-spacing: 2.2px;
+  margin-bottom: 15px;
+  font-weight: 500;
+}
+h1 {
+  font-family: Georgia, 'Times New Roman', serif;
+  color: #edf0ff;
+  font-size: 37px;
+  font-weight: 400;
+  letter-spacing: -0.9px;
+  text-shadow: 0 3px 18px #0007;
+}
+.page-heading {
+  margin-bottom: 43px;
+  align-items: center;
+  min-height: 85px;
+}
+.page-heading p {
+  color: #9faac5;
+  font-size: 11px;
+  margin-top: 12px;
+}
+.button {
+  border-radius: 6px;
+  font-weight: 550;
+  padding: 10px 14px;
+}
+.button.primary {
+  background: linear-gradient(135deg, #d1d9ff, #a9b9f5);
+  color: #202c51;
+  border-color: #d2dfff;
+  box-shadow:
+    inset 0 1px #ffffff77,
+    0 3px 12px #7d8fe818;
+}
+.button.primary:hover {
+  background: #dee4ff;
+  box-shadow: 0 0 20px #b0beff24;
+}
+.button.secondary {
+  background: #171f35d9;
+  color: #ced8f5;
+  border-color: #acbfff35;
+  box-shadow:
+    inset 0 1px #e4eaff08,
+    0 2px 8px #03071322;
+}
+.button.secondary:hover {
+  background: #25304c;
+  border-color: #b1c5ff66;
+}
+.status-strip {
+  position: relative;
+  padding: 20px 22px;
+  border: 1px solid #a8bcff28;
+  background: linear-gradient(110deg, #202946d9, #151d32ee);
+  border-radius: 10px;
+  box-shadow:
+    inset 0 1px #d4dfff0b,
+    0 8px 30px #0002;
+  margin-bottom: 29px;
+}
+.status-strip:before {
+  content: '';
+  pointer-events: none;
+  position: absolute;
+  top: -1px;
+  left: 15%;
+  right: 15%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #becdff66, transparent);
+}
+.status-orbit {
+  background: #bacbff09;
+  color: #bdceff;
+  border-color: #aabfff29;
+  width: 37px;
+  height: 37px;
+}
+.status-strip strong {
+  color: #dbe3fc;
+  font-size: 12px;
+  font-weight: 500;
+}
+.status-strip p,
+.strip-trailing {
+  color: #96a4c5;
+}
+.tiny-star {
+  color: #c5d1f7;
+}
+.status-strip.has-updates {
+  border-color: #cebb8538;
+}
+.status-strip.has-updates .status-orbit {
+  color: #e5ca91;
+  border-color: #d8bc7538;
+  background: #cba6660a;
+}
+.tabs {
+  border-color: #abbaff16;
+  background: #0d1221;
+  padding: 4px;
+  border-radius: 7px;
+  gap: 5px;
+}
+.tabs button {
+  color: #8d9ab9;
+  border-radius: 4px;
+  font-size: 10px;
+}
+.tabs button:hover {
+  color: #ced8f3;
+  background: #bdcbff08;
+}
+.tabs button.selected {
+  background: #29334d;
+  color: #e0e7fc;
+  box-shadow:
+    inset 0 1px #c1d0ff14,
+    0 1px 3px #0004;
+}
+.search-box {
+  border-color: #a5b8ff1b;
+  background: #0d1220cc;
+  border-radius: 6px;
+  color: #8494b9;
+}
+.search-box:focus-within {
+  background: #151d32;
+  border-color: #a8bcff66;
+}
+input::placeholder {
+  color: #7887a8;
+}
+.addon-list {
+  background: #121827ed;
+  border: 1px solid #b8c8ff1c;
+  border-radius: 10px;
+  box-shadow: 0 10px 40px #03061330;
+}
+.table-head {
+  background: #0d1321;
+  color: #7f8fb3;
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  border-bottom-color: #bbcbff12;
+  height: 36px;
+}
+.addon-row {
+  height: 67px;
+  border-bottom-color: #afc1ff0b;
+}
+.addon-row:nth-child(odd) {
+  background: #a8beff02;
+}
+.addon-row:hover {
+  background: #97adff07;
+}
+.addon-row.chosen {
+  background: #a3b7ff10;
+}
+.addon-name {
+  color: #e0e6f6;
+  font-weight: 500;
+}
+.addon-name small {
+  color: #8594b4;
+  margin-top: 6px;
+}
+.source-cell,
+.version,
+.status-label {
+  color: #98a7c6;
+}
+.status-label.current {
+  color: #9fc6bc;
+}
+.status-label.local {
+  color: #9aa8c7;
+}
+.status-label.update {
+  color: #e2c78d;
+}
+.addon-icon {
+  border-radius: 8px;
+}
+.addon-icon.original-art,
+.addon-icon.large.original-art {
+  background: #0a101b;
+  border-color: #a9beff26;
+  box-shadow:
+    inset 0 1px #ffffff09,
+    0 2px 6px #0004;
+  border-radius: 8px;
+  padding: 3px;
+}
+.addon-icon img {
+  border-radius: 5px;
+}
+.row-action,
+.icon-button {
+  color: #8395bc;
+}
+.row-action:hover,
+.icon-button:hover {
+  color: #d4dfff;
+  background: #b2c7ff12;
+}
+.list-footer {
+  color: #7e90b5;
+}
+.setup-invitation {
+  border-color: #b1c4ff18;
+  background: linear-gradient(110deg, #23264255, #121927);
+  border-radius: 9px;
+  padding: 20px 22px;
+}
+.setup-invitation:hover {
+  background: #202840;
+  border-color: #a8bfff36;
+}
+.setup-invitation strong {
+  color: #c7d2ef;
+}
+.setup-invitation p,
+.setup-invitation > span,
+.invitation-icon {
+  color: #95a5ca;
+}
+.app-footer,
+.app-footer small {
+  color: #67789b;
+}
+.sync-hero,
+.discover-card,
+.source-card,
+.scope-item {
+  background: radial-gradient(ellipse at 50% 0, #6c77c814, transparent 70%), #121929;
+  border-color: #b1c3ff1b;
+  border-radius: 10px;
+}
+.discover-card:hover {
+  background: #1a2339;
+  border-color: #b2c5ff3a;
+}
+.sync-hero {
+  background: radial-gradient(ellipse at 50% 0, #7983d722, transparent 70%), #131a2c;
+  border-color: #b5c7ff28;
+}
+.diagram-device,
+.activity-icon {
+  color: #b2c5ef;
+  background: #a9bfff09;
+  border-color: #b4c7ff24;
+}
+.section-heading h3,
+.settings-list h3,
+.scope-item h4 {
+  color: #d4def7;
+}
+.discover-card p,
+.source-card p,
+.scope-item p,
+.settings-list p,
+.honest-note p,
+.service-note,
+.empty p,
+.activity-row p {
+  color: #91a1c3;
+}
+.text-button {
+  color: #b6c9ff;
+}
+.text-button:hover {
+  color: #e0e8ff;
+}
+.path-field,
+.service-input,
+.setting-label select {
+  background: #0d1423;
+  border-color: #bbceff20;
+  color: #b3c5e8;
+}
+.detail-drawer {
+  background: linear-gradient(140deg, #1b2340, #101727 60%);
+  border-left: 1px solid #b2c7ff2c;
+  box-shadow: -20px 0 80px #03061077;
+}
+.detail-drawer h2 {
+  font-family: Georgia, serif;
+  color: #edf0ff;
+  font-weight: 400;
+}
+.drawer-desc,
+.detail-kv > span,
+.drawer-note {
+  color: #96a6c7;
+}
+.detail-kv strong {
+  color: #d3dff7;
+}
+.release-notes,
+.honest-note {
+  background: #080e1b88;
+  border-color: #c4d5ff15;
+  color: #a1afd0;
+}
+.modal {
+  background: radial-gradient(ellipse at 50% 0, #41477e33, transparent 70%), #151c2e;
+  border: 1px solid #b3c8ff2e;
+  box-shadow:
+    0 30px 100px #0008,
+    inset 0 1px #d5dfff12;
+}
+.modal p {
+  color: #98a8c7;
+}
+.command-item:hover {
+  background: #acc4ff0b;
+}
+.command-item > svg:last-child {
+  color: #8da2d0;
+}
+.toast {
+  background: #202b45;
+  border-color: #b5cbff3d;
+  color: #d7e3ff;
+}
+.preview-banner {
+  color: #93a6ce;
+}
+::-webkit-scrollbar-track {
+  background: #0b0e19;
+}
+::-webkit-scrollbar-thumb {
+  background: #35405e;
+  border-color: #0b0e19;
+  border-radius: 6px;
+}
+@media (max-width: 1100px) {
+  main {
+    padding-left: 28px;
+    padding-right: 28px;
+  }
+  .celestial-sky {
+    opacity: 0.65;
+  }
+}
+
+/* The lunar sanctuary: carved frames and the typography of a fantasy spellbook. */
+.brand {
+  font-family: 'Cinzel Decorative', Georgia, serif;
+  font-size: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  text-shadow: 0 2px 2px #0008;
+  gap: 7px;
+}
+.brand-emblem {
+  width: 35px;
+  height: 35px;
+}
+.preview-tag {
+  font-size: 6px;
+  letter-spacing: 0.5px;
+  padding: 3px;
+}
+h1 {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 33px;
+  font-weight: 500;
+  letter-spacing: -0.6px;
+  color: #ece4ce;
+  text-shadow:
+    0 2px 3px #0009,
+    0 0 30px #c5d6ff0c;
+}
+.nav-item,
+.button,
+.tabs button,
+.table-head,
+.nav-label,
+.eyebrow,
+.section-heading h3,
+.settings-list h3,
+.scope-item h4,
+.detail-drawer h2,
+.modal h2,
+.discover-card h3,
+.source-card h3 {
+  font-family: 'Cinzel', Georgia, serif;
+}
+.nav-item {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  border-radius: 3px;
+}
+.nav-label {
+  font-size: 8px;
+  letter-spacing: 1.8px;
+}
+.eyebrow {
+  font-size: 8px;
+  letter-spacing: 1.7px;
+  color: #b3b7d4;
+}
+.button,
+.tabs button {
+  font-size: 9px;
+  letter-spacing: 0.2px;
+}
+.table-head {
+  font-size: 8px;
+  letter-spacing: 1px;
+  color: #a8a8c2;
+}
+.nav-item.active {
+  color: #dedbc8;
+  background: linear-gradient(90deg, #7486cc21, #5e70ae0c);
+  border: 1px solid #b0b8da22;
+  box-shadow:
+    inset 0 1px #e6eaff10,
+    inset 0 -1px #0006;
+}
+.nav-item.active:before {
+  background: #d5c599;
+  box-shadow: 0 0 10px #dbcfaa4d;
+}
+.sidebar {
+  background:
+    radial-gradient(ellipse at 0 0, #42456929, transparent 70%),
+    linear-gradient(90deg, #151929, #101522 97%, #45485d44 98%, #080d18);
+  border-right-color: #b4b5cf22;
+}
+.sidebar-space {
+  position: relative;
+  min-height: 55px;
+}
+.sidebar-space:after {
+  content: '☽  ·  ◇  ·  ☾';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 32%;
+  text-align: center;
+  color: #8f9ac03b;
+  font-size: 19px;
+  letter-spacing: 5px;
+}
+.topbar {
+  box-shadow:
+    inset 0 -1px #02061199,
+    0 1px #b1b5d10b;
+}
+.status-strip,
+.sync-hero,
+.addon-list,
+.source-card,
+.discover-card,
+.scope-item,
+.setup-invitation {
+  border-radius: 3px;
+  border-color: #abb4d03b;
+  box-shadow:
+    inset 0 0 0 1px #030815b3,
+    inset 0 0 0 2px #9da7ca0a,
+    0 8px 24px #0003;
+}
+.status-strip {
+  padding: 21px 23px;
+  background:
+    radial-gradient(ellipse at 0 0, #7c87bd1a, transparent 80%),
+    linear-gradient(120deg, #1c243aeb, #121a2de8);
+}
+.status-strip:before {
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    #bbb5a55e,
+    #bbb5a500 17%,
+    #bbc9ff44 50%,
+    #bbb5a500 83%,
+    #bbb5a55e
+  );
+}
+.status-strip:after {
+  content: '◆';
+  position: absolute;
+  right: -4px;
+  top: -7px;
+  font-size: 9px;
+  color: #b5b3a4;
+  text-shadow: 0 1px #000;
+  pointer-events: none;
+}
+.status-orbit {
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 3px #a9b9e607,
+    inset 0 0 12px #9baffd0a;
+  border-color: #b6b5d33b;
+}
+.status-strip strong {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 11px;
+  color: #e0dfda;
+  font-weight: 500;
+}
+.table-head {
+  background: linear-gradient(#242b41, #151d30);
+  box-shadow:
+    inset 0 1px #d7dcf116,
+    inset 0 -1px #01050e66;
+}
+.addon-list {
+  border-color: #9da7c236;
+}
+.button {
+  border-radius: 3px;
+}
+.button.secondary {
+  background: linear-gradient(#2b3249e8, #1a2238f0);
+  border-color: #a4a9c35c;
+  border-bottom-color: #69718c55;
+  box-shadow:
+    inset 0 1px #f5f0df14,
+    inset 0 -1px #0007,
+    0 2px 6px #0005;
+  color: #e1decf;
+}
+.button.secondary:hover {
+  border-color: #c7c1a776;
+  background: linear-gradient(#3b4260, #252e48);
+}
+.button.primary {
+  background: linear-gradient(#c5d2f7, #98abd9 55%, #8599c9);
+  color: #182443;
+  border-color: #e1e4e5;
+  border-bottom-color: #6b7da7;
+  box-shadow:
+    inset 0 1px #ffffed99,
+    inset 0 -1px #33406744,
+    0 2px 6px #0006;
+}
+.tabs {
+  border-radius: 3px;
+  border-color: #9da7c12b;
+  background: #0a1020bb;
+}
+.tabs button {
+  border-radius: 2px;
+}
+.tabs button.selected {
+  color: #e2decd;
+  background: linear-gradient(#343d58, #242e47);
+  box-shadow:
+    inset 0 1px #b6c5ef24,
+    inset 0 -1px #0005;
+}
+.addon-icon.original-art {
+  border-radius: 4px;
+  border-color: #a3a9bd50;
+  box-shadow:
+    inset 0 1px #e7e0ca12,
+    0 0 0 1px #050b15,
+    0 2px 5px #0006;
+}
+.addon-icon img {
+  border-radius: 2px;
+}
+.detail-drawer h2 {
+  font-size: 25px;
+  color: #ede4ce;
+}
+.modal {
+  border-radius: 5px;
+  border-color: #adafc84d;
+  box-shadow:
+    inset 0 0 0 1px #060b18,
+    inset 0 0 0 3px #b5bed40b,
+    0 30px 100px #0009;
+}
+.client-game-icon {
+  width: 31px;
+  height: 31px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 3px #0008);
+}
+
+.source-cell {
+  min-width: 0;
+}
+.source-cell > svg {
+  flex-shrink: 0;
+}
+.source-cell > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

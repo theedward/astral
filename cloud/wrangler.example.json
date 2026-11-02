@@ -1,0 +1,19 @@
+{
+  "name": "astral-sync",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-10-29",
+  "workers_dev": true,
+  "vars": {
+    "PUBLIC_ORIGIN": "https://astral-sync.YOUR-SUBDOMAIN.workers.dev",
+    "BNET_CLIENT_ID": "SET_YOUR_REGISTERED_CLIENT_ID"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "astral-sync",
+      "database_id": "SET_YOUR_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "triggers": { "crons": ["17 */6 * * *"] }
+}

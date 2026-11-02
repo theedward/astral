@@ -1,0 +1,1253 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { createRoot } from 'react-dom/client';
+import {
+  ArrowUpRight,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Search,
+  RefreshCw,
+  Check,
+  ChevronRight,
+  ChevronDown,
+  Plus,
+  Cloud,
+  Monitor,
+  Package,
+  Layers,
+  Settings,
+  History,
+  Globe,
+  ShieldCheck,
+  FolderOpen,
+  ExternalLink,
+  X,
+  Command,
+  HardDrive,
+  WifiOff,
+  AlertCircle,
+  LoaderCircle,
+  CheckCircle2,
+  GitBranch,
+  ArrowRight,
+  LogOut,
+  SlidersHorizontal,
+  MoreHorizontal,
+  Sparkles,
+  Sun,
+  Moon,
+} from 'lucide-react';
+import './style.css';
+import './controls.css';
+import './editorial.css';
+import AccountPage from './AccountPage.jsx';
+import ProviderMark from './ProviderMark.jsx';
+import DiscoveryPanel from './DiscoveryPanel.jsx';
+import astralMark from '../assets/icon.png';
+import wowRetailIcon from '../assets/games/wow-retail.png';
+import wowForeverIcon from '../assets/games/wow-forever.png';
+function AddonIcon({ addon, large = false }) {
+  const artwork = addon.icon || (addon.local ? astralMark : null);
+  return (
+    <span
+      className={
+        'addon-icon ' + (large ? 'large ' : '') + (artwork ? 'original-art ' : '') + addon.color
+      }
+      title={artwork ? addon.name : 'No bundled icon available'}
+    >
+      {artwork ? (
+        <img src={artwork} alt="" aria-hidden="true" decoding="async" />
+      ) : (
+        <Package size={large ? 28 : 19} />
+      )}
+    </span>
+  );
+}
+const navs = [
+  ['Addons', Package],
+  ['Discover', Plus],
+  ['Your setup', Layers],
+  ['Activity', History],
+  ['Sources', Globe],
+];
+const empty = {
+  addons: [],
+  backups: [],
+  accounts: [],
+  providers: [],
+  root: '',
+  platform: 'darwin',
+};
+const api = window.astral;
+function App() {
+  const [s, setS] = useState(empty),
+    [page, setPage] = useState('Addons'),
+    [theme, setTheme] = useState(() => localStorage.getItem('astral-theme') || 'dark'),
+    [accountOpen, setAccountOpen] = useState(false),
+    [toolsOpen, setToolsOpen] = useState(false),
+    [query, setQuery] = useState(''),
+    [filter, setFilter] = useState('All addons'),
+    [requestBusy, setBusy] = useState(false),
+    [progress, setProgress] = useState({}),
+    [toast, setToast] = useState(null),
+    [connectionError, setConnectionError] = useState(null),
+    [selected, setSelected] = useState(null),
+    [dialog, setDialog] = useState(null),
+    [service, setService] = useState(''),
+    [snapshot, setSnapshot] = useState(null),
+    [command, setCommand] = useState(false);
+  const accountRef = useRef(null),
+    toolsRef = useRef(null);
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem('astral-theme', theme);
+  }, [theme]);
+  useEffect(() => {
+    const dismiss = (event) => {
+      if (!accountRef.current?.contains(event.target)) setAccountOpen(false);
+      if (!toolsRef.current?.contains(event.target)) setToolsOpen(false);
+    };
+    document.addEventListener('pointerdown', dismiss);
+    return () => document.removeEventListener('pointerdown', dismiss);
+  }, []);
+  const navigate = (next) => {
+    setPage(next);
+    setSelected(null);
+    setAccountOpen(false);
+    setToolsOpen(false);
+  };
+  const busy = requestBusy || progress.kind === 'update';
+  const search = useRef(null),
+    toastTimer = useRef(null);
+  const notify = (message, error = false) => {
+    setToast({ message, error });
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 6500);
+  };
+  const call = async (name, ...args) => {
+    if (!api) {
+      notify('Open Astral’s desktop app to use this action. This browser preview is read-only.');
+      return;
+    }
+    setBusy(true);
+    if (name === 'connect') setConnectionError(null);
+    try {
+      const r = await api[name](...args);
+      if (r?.addons) setS(r);
+      if (name === 'snapshot') setSnapshot(r);
+      if (name === 'sync' && r?.conflict) setDialog('conflict');
+      return r;
+    } catch (e) {
+      const message = e.message.replace(/^Error invoking remote method '[^']+': Error: /, '');
+      if (name === 'connect') setConnectionError(message);
+      notify(message, true);
+      api
+        .state()
+        .then(setS)
+        .catch(() => {});
+    } finally {
+      setBusy(false);
+    }
+  };
+  useEffect(() => {
+    if (api) {
+      api
+        .state()
+        .then(setS)
+        .catch((e) => notify(e.message, true));
+      return api.onProgress((p) => {
+        setProgress(p);
+        if (p.kind === 'sync-ready')
+          api
+            .sync()
+            .then((r) => {
+              if (r.conflict) {
+                setDialog('conflict');
+                notify('Both setups changed. Choose which one to keep.', true);
+              } else setS(r);
+            })
+            .catch((e) => notify(e.message, true));
+      });
+    }
+    fetch('/preview.json')
+      .then((r) => r.json())
+      .then(setS)
+      .catch(() => {});
+  }, []);
+  useEffect(
+    () =>
+      api?.onChanged?.(() =>
+        api
+          .state()
+          .then(setS)
+          .catch(() => {}),
+      ),
+    [],
+  );
+  useEffect(() => {
+    const fn = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setCommand((v) => !v);
+      }
+      if (e.key === 'Escape') {
+        setAccountOpen(false);
+        setToolsOpen(false);
+        setDialog(null);
+        setCommand(false);
+        setSelected(null);
+      }
+    };
+    window.addEventListener('keydown', fn);
+    return () => window.removeEventListener('keydown', fn);
+  }, []);
+  const updates = s.addons.filter((a) => a.status === 'update').length;
+  const filtered = s.addons
+    .filter((a) => (a.name + ' ' + a.category).toLowerCase().includes(query.toLowerCase()))
+    .filter(
+      (a) =>
+        filter === 'All addons' ||
+        (filter === 'Updates' && a.status === 'update') ||
+        (filter === 'Manual' && ['manual', 'local'].includes(a.status)),
+    );
+  const check = async () => {
+    const r = await call('check');
+    if (r) {
+      const errs = r.addons.filter((a) => a.release?.error).length;
+      notify(
+        errs
+          ? `Checked available sources. ${errs} release check${errs === 1 ? ' needs' : 's need'} attention.`
+          : `Release checks complete. ${r.addons.filter((a) => a.status === 'update').length} update(s) available.`,
+      );
+    }
+  };
+  const update = async (a) => {
+    const r = await call('update', a.id);
+    if (r) {
+      notify(a.name + ' is installed and backed up.');
+      setSelected(r.addons.find((x) => x.id === a.id));
+    }
+  };
+  const importZip = async (addon) => {
+    const result = await call('importZip', addon.id);
+    if (result?.addons) {
+      setSelected(result.addons.find((a) => a.id === addon.id) || null);
+      notify(addon.name + ' updated from ZIP. Previous version saved in Activity.');
+    }
+  };
+  const updateAll = async () => {
+    for (const a of s.addons.filter((a) => a.status === 'update')) {
+      if (!(await call('update', a.id))) break;
+    }
+    notify('Update queue finished.');
+  };
+  const time = (t) =>
+    t
+      ? new Date(t).toLocaleString(undefined, {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : 'Not synced yet';
+  return (
+    <div className={'app editorial' + (api && s.platform === 'darwin' ? ' native-mac' : '')}>
+      <div className="workspace">
+        <header className="topbar">
+          <button
+            className="editorial-brand"
+            onClick={() => navigate('Addons')}
+            aria-label="Astral library"
+          >
+            <span className="eclipse-mark" aria-hidden="true" />
+            <strong>Astral</strong>
+          </button>
+          <nav className="primary-nav" aria-label="Main navigation">
+            <button
+              className={page === 'Addons' ? 'active' : ''}
+              aria-current={page === 'Addons' ? 'page' : undefined}
+              onClick={() => navigate('Addons')}
+            >
+              Library
+            </button>
+            <button
+              className={page === 'Discover' ? 'active' : ''}
+              aria-current={page === 'Discover' ? 'page' : undefined}
+              onClick={() => navigate('Discover')}
+            >
+              Discover
+            </button>
+          </nav>
+          <div className="header-actions">
+            <div className="game">
+              <img
+                className="client-game-icon"
+                src={s.flavor === 'forever' ? wowForeverIcon : wowRetailIcon}
+                alt=""
+              />
+              <select
+                className="client-select"
+                aria-label="Game client"
+                value={s.flavor || 'retail'}
+                disabled={busy}
+                onChange={(e) => {
+                  setQuery('');
+                  setSelected(null);
+                  call('client', e.target.value);
+                }}
+              >
+                {(s.clients?.length ? s.clients : [{ id: 'retail', label: 'Retail' }]).map((c) => (
+                  <option value={c.id} key={c.id}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              className="icon-button"
+              aria-label="Quick find"
+              title="Quick find · Cmd/Ctrl K"
+              onClick={() => setCommand(true)}
+            >
+              <Search size={18} />
+            </button>
+            <button
+              className="icon-button"
+              aria-label={'Switch to ' + (theme === 'dark' ? 'light' : 'dark') + ' theme'}
+              title="Switch appearance"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            >
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <div className="header-popover-anchor" ref={toolsRef}>
+              <button
+                className="icon-button"
+                aria-label="Tools"
+                aria-expanded={toolsOpen}
+                onClick={() => {
+                  setToolsOpen((v) => !v);
+                  setAccountOpen(false);
+                }}
+              >
+                <MoreHorizontal size={20} />
+              </button>
+              {toolsOpen && (
+                <div className="header-popover tools-popover" aria-label="Tools">
+                  {[
+                    ['Activity', History],
+                    ['Sources', Globe],
+                    ['Settings', Settings],
+                  ].map(([name, Icon]) => (
+                    <button key={name} onClick={() => navigate(name)}>
+                      <Icon size={16} />
+                      {name === 'Activity' ? 'Activity & backups' : name}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => {
+                      setToolsOpen(false);
+                      call('chooseRoot');
+                    }}
+                  >
+                    <FolderOpen size={16} />
+                    Choose WoW folder
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className="header-popover-anchor" ref={accountRef}>
+              <button
+                className="profile-trigger"
+                aria-label="Account menu"
+                aria-expanded={accountOpen}
+                onClick={() => {
+                  setAccountOpen((v) => !v);
+                  setToolsOpen(false);
+                }}
+              >
+                <span className="profile-avatar">
+                  {s.signedIn ? s.accountName?.slice(0, 1) || 'A' : <Cloud size={18} />}
+                </span>
+                <ChevronDown size={13} />
+              </button>
+              {accountOpen && (
+                <div className="header-popover profile-popover" aria-label="Account">
+                  <div className="profile-summary">
+                    <span className="profile-avatar large">
+                      {s.signedIn ? s.accountName?.slice(0, 1) || 'A' : <Cloud size={22} />}
+                    </span>
+                    <div>
+                      <strong>{s.signedIn ? s.accountName : 'Your Astral account'}</strong>
+                      <small>
+                        <i className={'connection-dot ' + (s.signedIn ? 'connected' : '')} />
+                        {s.signedIn ? 'Battle.net connected' : 'Not connected'}
+                      </small>
+                    </div>
+                  </div>
+                  <button onClick={() => navigate('Your setup')}>
+                    <Cloud size={17} />
+                    {s.signedIn ? 'Account & sync' : 'Connect Battle.net'}
+                    <ChevronRight size={14} />
+                  </button>
+                  {s.signedIn && (
+                    <div className="profile-sync">
+                      <RefreshCw size={16} />
+                      <span>
+                        Last sync<small>{time(s.lastSync)}</small>
+                      </span>
+                    </div>
+                  )}
+                  <div className="profile-device">
+                    <Monitor size={15} />
+                    {s.platform === 'win32' ? 'This Windows PC' : 'This Mac'}
+                    <span>{s.running ? 'WoW running' : 'WoW closed'}</span>
+                  </div>
+                  {s.signedIn && (
+                    <button
+                      className="profile-signout"
+                      disabled={busy}
+                      onClick={() => {
+                        setAccountOpen(false);
+                        call('disconnect');
+                      }}
+                    >
+                      <LogOut size={16} />
+                      Sign out
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+        <main data-page={page}>
+          <div className="eyebrow">
+            {page === 'Addons'
+              ? 'YOUR INTERFACE. IN BALANCE.'
+              : page === 'Your setup'
+                ? 'FEELS LIKE HOME. ON EVERY COMPUTER.'
+                : page === 'Sources'
+                  ? 'STRAIGHT FROM THE PEOPLE WHO MAKE THEM.'
+                  : page === 'Activity'
+                    ? 'A CLEAR TRAIL. AN EASY WAY BACK.'
+                    : 'MAKE ASTRAL YOURS.'}
+          </div>
+          <div className="page-heading">
+            <div>
+              <h1>
+                {page === 'Addons' ? (
+                  <>
+                    Your world.
+                    <br />
+                    In order.
+                  </>
+                ) : page === 'Your setup' ? (
+                  <>
+                    Your setup.
+                    <br />
+                    Everywhere.
+                  </>
+                ) : page === 'Discover' ? (
+                  <>
+                    Find your
+                    <br />
+                    next addon.
+                  </>
+                ) : page === 'Sources' ? (
+                  <>
+                    Know the
+                    <br />
+                    source.
+                  </>
+                ) : page === 'Activity' ? (
+                  <>
+                    Activity &<br />
+                    backups.
+                  </>
+                ) : (
+                  <>
+                    Make it
+                    <br />
+                    yours.
+                  </>
+                )}
+              </h1>
+              <p>
+                {page === 'Discover'
+                  ? 'Search addon projects and review compatible releases.'
+                  : page === 'Addons'
+                    ? `${s.addons.length} addons · ${updates} updates`
+                    : page === 'Your setup'
+                      ? 'The interface you know. Ready when you are.'
+                      : page === 'Sources'
+                        ? 'Official releases, with the source always in view.'
+                        : page === 'Activity'
+                          ? 'Every update leaves a backup before anything changes.'
+                          : 'A few considered choices. Nothing to get in the way.'}
+              </p>
+            </div>
+            {page === 'Addons' && (
+              <button className="button secondary" disabled={busy} onClick={check}>
+                <RefreshCw size={15} className={busy ? 'spin' : ''} />
+                {progress.kind === 'check' ? 'Checking…' : 'Check for updates'}
+              </button>
+            )}
+          </div>
+          {!api && (
+            <div className="preview-banner">
+              Browser preview · real local inventory · actions are available in the desktop app
+            </div>
+          )}
+          {page === 'Addons' && (
+            <>
+              <div className={'status-strip ' + (updates ? 'has-updates' : '')}>
+                <div className="status-orbit">
+                  {updates ? <ArrowDownToLine size={20} /> : <Check size={21} />}
+                </div>
+                <div>
+                  <strong>
+                    {updates
+                      ? `${updates} update${updates === 1 ? '' : 's'} ready when you are`
+                      : s.addons.some((a) => a.status === 'unchecked')
+                        ? 'Your addons are in place'
+                        : 'You’re all caught up'}
+                  </strong>
+                  <p>
+                    {updates
+                      ? 'Your current versions will be backed up before updating.'
+                      : s.addons.some((a) => a.status === 'unchecked')
+                        ? 'Check official releases to see what’s new.'
+                        : 'Supported official sources have been checked.'}
+                  </p>
+                </div>
+                <div className="strip-trailing">
+                  {updates ? (
+                    <button className="button primary" disabled={busy} onClick={updateAll}>
+                      Update available <ArrowDownToLine size={15} />
+                    </button>
+                  ) : (
+                    <>
+                      <span className="tiny-star">✦</span>
+                      <span>{s.folderCount || 0} addon folders</span>
+                    </>
+                  )}
+                </div>
+              </div>
+              <div className="list-controls">
+                <div className="tabs">
+                  {['All addons', 'Updates', 'Manual'].map((t) => (
+                    <button
+                      key={t}
+                      className={filter === t ? 'selected' : ''}
+                      onClick={() => setFilter(t)}
+                    >
+                      {t}
+                      {t === 'Updates' && updates > 0 && <span>{updates}</span>}
+                    </button>
+                  ))}
+                </div>
+                <label className="search-box">
+                  <Search size={15} />
+                  <input
+                    ref={search}
+                    aria-label="Search addons"
+                    placeholder="Find an addon…"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                  />
+                  {query && (
+                    <button aria-label="Clear search" onClick={() => setQuery('')}>
+                      <X size={13} />
+                    </button>
+                  )}
+                </label>
+              </div>
+              <section className="addon-list" aria-label="Installed addons">
+                <div className="table-head">
+                  <span>ADDON</span>
+                  <span>SOURCE</span>
+                  <span>VERSION</span>
+                  <span>STATUS</span>
+                  <span />
+                </div>
+                {filtered.length ? (
+                  filtered.map((a) => (
+                    <div
+                      key={a.id}
+                      className={'addon-row ' + (selected?.id === a.id ? 'chosen' : '')}
+                    >
+                      <button className="addon-main" onClick={() => setSelected(a)}>
+                        <AddonIcon addon={a} />
+                        <span className="addon-name">
+                          <strong>{a.name}</strong>
+                          <small>
+                            {a.description || a.category}
+                            {a.modules.length > 1 ? ' · ' + a.modules.length + ' modules' : ''}
+                          </small>
+                        </span>
+                      </button>
+                      <span className="source-cell">
+                        {a.repo ? (
+                          <ProviderMark name="GitHub" small />
+                        ) : a.local ? (
+                          <HardDrive size={12} />
+                        ) : (
+                          <Globe size={12} />
+                        )}{' '}
+                        <span title={a.source}>{a.local ? 'Astral' : a.source}</span>
+                      </span>
+                      <span className="version" title={a.version}>
+                        {a.id === 'rio'
+                          ? (a.version.match(/v\d{12}/) || [a.version])[0]
+                          : a.version}
+                      </span>
+                      <span className={'status-label ' + a.status}>
+                        {a.release?.error ? (
+                          <>
+                            <AlertCircle size={12} />
+                            Needs attention
+                          </>
+                        ) : progress.id === a.id && progress.kind === 'update' ? (
+                          <>
+                            <LoaderCircle size={12} className="spin" />
+                            {progress.percent}%
+                          </>
+                        ) : a.status === 'update' ? (
+                          <>
+                            <span className="small-dot amber" />
+                            Update ready
+                          </>
+                        ) : a.status === 'current' ? (
+                          <>
+                            <Check size={12} />
+                            Up to date
+                          </>
+                        ) : a.status === 'local' ? (
+                          'Development'
+                        ) : a.status === 'manual' ? (
+                          'Manual source'
+                        ) : (
+                          'Not checked'
+                        )}
+                      </span>
+                      <button
+                        className="row-action"
+                        disabled={busy || (s.running && a.status === 'update')}
+                        aria-label={
+                          a.status === 'update' ? 'Update ' + a.name : 'Details for ' + a.name
+                        }
+                        onClick={() => (a.status === 'update' ? update(a) : setSelected(a))}
+                      >
+                        {a.status === 'update' ? (
+                          <ArrowDownToLine size={16} />
+                        ) : (
+                          <MoreHorizontal size={17} />
+                        )}
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <div className="empty">
+                    <Package size={28} />
+                    <h3>
+                      {s.addons.length ? 'No addons match that search' : 'Choose your WoW folder'}
+                    </h3>
+                    <p>
+                      {s.addons.length
+                        ? 'Try another name or switch the filter.'
+                        : 'Astral will find your installed addons without changing them.'}
+                    </p>
+                    {!s.addons.length && (
+                      <button className="button secondary" onClick={() => call('chooseRoot')}>
+                        Find World of Warcraft
+                      </button>
+                    )}
+                  </div>
+                )}
+              </section>
+              <div className="list-footer">
+                <span>
+                  <ShieldCheck size={13} />
+                  Backed up before updating
+                </span>
+                <span>Official sources · {s.addons.length} addon groups</span>
+              </div>
+              <button className="setup-invitation" onClick={() => setPage('Your setup')}>
+                <div className="invitation-icon">
+                  <Layers size={22} />
+                </div>
+                <div>
+                  <strong>Your addons are only half the story.</strong>
+                  <p>Bring your profiles, keybinds and familiar layout along.</p>
+                </div>
+                <span>
+                  Meet your setup <ArrowRight size={15} />
+                </span>
+              </button>
+            </>
+          )}
+          {page !== 'Settings' && ['available', 'ready'].includes(s.appUpdates?.phase) && (
+            <div className="legacy-backups" role="status">
+              <div>
+                <strong>Astral {s.appUpdates.latest} is available</strong>
+                <p>A new version is ready when you are.</p>
+              </div>
+              <button className="text-button" onClick={() => navigate('Settings')}>
+                View update <ArrowRight size={14} />
+              </button>
+            </div>
+          )}
+          {page === 'Discover' && (
+            <DiscoveryPanel
+              s={s}
+              busy={busy}
+              call={call}
+              notify={notify}
+              AddonIcon={AddonIcon}
+              onLibrary={(name) => {
+                setQuery(name);
+                setPage('Addons');
+              }}
+            />
+          )}
+          {page === 'Your setup' && (
+            <AccountPage
+              s={s}
+              busy={busy}
+              call={call}
+              notify={notify}
+              time={time}
+              snapshot={snapshot}
+              connectionError={connectionError}
+            />
+          )}
+          {page === 'Sources' && (
+            <div className="source-list">
+              {s.providers.map((p) => (
+                <article className="source-card" key={p.name}>
+                  <span className="source-brand">
+                    <ProviderMark name={p.name} />
+                  </span>
+                  <div>
+                    <h3>{p.name}</h3>
+                    <p>{p.detail}</p>
+                    {p.name === 'GitHub' && (
+                      <small>
+                        {s.addons.filter((a) => a.repo).length} installed addon groups use GitHub
+                        releases
+                      </small>
+                    )}
+                    <button
+                      className="text-button source-link"
+                      onClick={() => call('openProvider', p.name)}
+                    >
+                      Visit {p.name}
+                      <ArrowUpRight size={14} />
+                    </button>
+                  </div>
+                  <span className={'provider-status ' + (p.available ? 'ready' : '')}>
+                    {p.available ? <Check size={13} /> : <span className="small-dot amber" />}
+                    {p.status}
+                  </span>
+                </article>
+              ))}
+              <div className="honest-note">
+                <Globe size={18} />
+                <div>
+                  <strong>Source access stays explicit.</strong>
+                  <p>
+                    Wago and CurseForge need their own approved integrations. Astral currently
+                    manages the official GitHub releases listed in your library.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          {page === 'Activity' && (
+            <>
+              {s.legacyBackups && (
+                <div className="legacy-backups">
+                  <div>
+                    <strong>Earlier Raider.IO backups</strong>
+                    <p>Backups from the retired helper are preserved on this computer.</p>
+                  </div>
+                  <button className="text-button" onClick={() => call('openLegacyBackups')}>
+                    Open archive
+                    <ArrowUpRight size={14} />
+                  </button>
+                </div>
+              )}
+              {(s.dailyUpdates?.runs || []).slice(0, 3).map((run) => (
+                <div className="update-run" key={run.time}>
+                  <h4>Daily update check · {time(run.time)}</h4>
+                  <p>
+                    {run.results.filter((r) => r.status === 'updated').length} updated ·{' '}
+                    {
+                      run.results.filter((r) => r.status === 'error' || r.status === 'review')
+                        .length
+                    }{' '}
+                    need attention{run.status === 'deferred' ? ' · Waiting for WoW to close' : ''}
+                  </p>
+                  {run.results
+                    .filter((r) => r.status !== 'current')
+                    .map((r, i) => (
+                      <details key={r.id + '-' + i}>
+                        <summary>
+                          {r.name} · {r.client === 'forever' ? 'Forever' : 'Retail'} ·{' '}
+                          {r.status === 'updated' ? `${r.from} → ${r.to}` : r.message || r.status}
+                        </summary>
+                        {r.notes && <pre className="release-notes">{r.notes}</pre>}
+                      </details>
+                    ))}
+                </div>
+              ))}
+              <div className="section-heading">
+                <h3>{s.backups.length} saved update backups</h3>
+                <button className="button secondary" onClick={() => call('openBackups')}>
+                  <FolderOpen size={14} />
+                  Open backups
+                </button>
+              </div>
+              {s.backups.length ? (
+                <div className="activity-list">
+                  {s.backups.map((b) => (
+                    <div className="activity-row" key={b.id}>
+                      <span className="activity-icon">
+                        <History size={18} />
+                      </span>
+                      <div>
+                        <strong>{b.name} updated</strong>
+                        <p>
+                          {b.version || 'First install'} → {b.release} · {time(b.time)}
+                        </p>
+                        {b.notes && (
+                          <details className="release-notes-details">
+                            <summary>Changelog</summary>
+                            <pre className="release-notes">{b.notes}</pre>
+                          </details>
+                        )}
+                      </div>
+                      <button
+                        className="text-button"
+                        disabled={busy || s.running}
+                        onClick={() => setDialog({ restore: b })}
+                      >
+                        Restore previous
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty activity-empty">
+                  <History size={30} />
+                  <h3>A fresh start.</h3>
+                  <p>
+                    Your first addon update will appear here,
+                    <br />
+                    along with a backup of the previous version.
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+          {page === 'Settings' && (
+            <div className="settings-list">
+              <section>
+                <h3>World of Warcraft</h3>
+                <p>Astral reads your Retail installation.</p>
+                <div className="path-field">
+                  <FolderOpen size={17} />
+                  <code>{s.root || 'No game folder selected'}</code>
+                  <button className="text-button" onClick={() => call('chooseRoot')}>
+                    Change
+                  </button>
+                </div>
+                <label className="setting-label">
+                  Local WoW account
+                  <select
+                    value={s.account || ''}
+                    onChange={(e) => call('setAccount', e.target.value)}
+                  >
+                    <option value="" disabled>
+                      Select account
+                    </option>
+                    {s.accounts.map((a) => (
+                      <option key={a}>{a}</option>
+                    ))}
+                  </select>
+                </label>
+              </section>
+              <section>
+                <h3>Astral service</h3>
+                <p>Your account and sync controls are available from the profile button.</p>
+                <form
+                  className="service-input"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    call('service', service);
+                  }}
+                >
+                  <input
+                    type="url"
+                    aria-label="Astral cloud service address"
+                    placeholder="https://your-astral-service.workers.dev"
+                    value={service || s.service}
+                    onChange={(e) => setService(e.target.value)}
+                  />
+                  <button className="button secondary" disabled={busy || !service}>
+                    Connect service
+                  </button>
+                </form>
+                {s.signedIn && (
+                  <button className="text-button" onClick={() => call('disconnect')}>
+                    <LogOut size={14} />
+                    Sign out of Battle.net
+                  </button>
+                )}
+              </section>
+              <section>
+                <h3>Keep your setup close</h3>
+                <p>
+                  Astral stays in the menu bar or system tray when its window closes. Connected
+                  settings sync when the app starts and after WoW exits.
+                </p>
+                <label className="setting-label">
+                  Start Astral when I sign in
+                  <input
+                    type="checkbox"
+                    aria-label="Start Astral at login"
+                    checked={!!s.startup}
+                    onChange={(e) => call('startup', e.target.checked)}
+                  />
+                </label>
+              </section>
+              <section>
+                <h3>Addon updates</h3>
+                <p>
+                  Check connected addons daily, including Raider.IO. The background job works even
+                  when the Astral window is closed, waits for WoW to exit and saves backups before
+                  updates. Manual sources still need a downloaded ZIP.
+                </p>
+                <label className="setting-label">
+                  Daily addon updates
+                  <input
+                    type="checkbox"
+                    aria-label="Daily addon updates"
+                    checked={!!s.autoUpdates}
+                    disabled={busy}
+                    onChange={(e) => call('autoUpdates', e.target.checked)}
+                  />
+                </label>
+                <p>
+                  {s.backgroundUpdates?.error ||
+                    (s.backgroundUpdates?.enabled
+                      ? 'Background checks are scheduled. No separate Raider.IO app is needed.'
+                      : 'Background scheduling is not active. Open Astral to keep daily checks available.')}
+                </p>
+                <div className="update-actions">
+                  <button
+                    className="button secondary"
+                    disabled={busy || s.running}
+                    onClick={async () => {
+                      const r = await call('runDailyUpdates');
+                      if (r) notify('Daily update check finished. See Activity for results.');
+                    }}
+                  >
+                    Check now
+                  </button>
+                  <span className="muted">
+                    {s.running
+                      ? 'Waiting for WoW to close'
+                      : s.dailyUpdates?.runs?.length
+                        ? 'Last check ' + time(s.dailyUpdates.runs[0].time)
+                        : 'First daily check is pending'}
+                  </span>
+                </div>
+              </section>
+              <section>
+                <h3>Astral updates</h3>
+                <p>
+                  Version {s.appVersion || '0.5.0'} · Updates come from Astral’s GitHub releases.
+                  Downloads are verified before installation.
+                </p>
+                <label className="setting-label">
+                  Automatically check for new versions
+                  <input
+                    type="checkbox"
+                    aria-label="Check for Astral updates automatically"
+                    checked={s.appUpdates?.enabled !== false}
+                    disabled={busy}
+                    onChange={(e) => call('appUpdateChecks', e.target.checked)}
+                  />
+                </label>
+                <p role="status" aria-live="polite">
+                  {s.appUpdates?.phase === 'checking'
+                    ? 'Checking for a new version…'
+                    : s.appUpdates?.phase === 'downloading'
+                      ? `Downloading… ${s.appUpdates.percent || 0}%`
+                      : s.appUpdates?.phase === 'available'
+                        ? `Astral ${s.appUpdates.latest} is available.`
+                        : s.appUpdates?.phase === 'ready'
+                          ? `Astral ${s.appUpdates.latest} is ready to install.`
+                          : s.appUpdates?.phase === 'current'
+                            ? 'You’re up to date.'
+                            : s.appUpdates?.phase === 'unpublished'
+                              ? 'The first public release hasn’t been published yet.'
+                              : s.appUpdates?.error ||
+                                'Checks once a day while Astral is running. Installation waits for you.'}
+                </p>
+                <div className="update-actions">
+                  <button
+                    className="button secondary"
+                    disabled={busy || ['checking', 'downloading'].includes(s.appUpdates?.phase)}
+                    onClick={() => call('checkAppUpdate')}
+                  >
+                    Check for updates
+                  </button>
+                  {s.appUpdates?.phase === 'available' && (
+                    <button
+                      className="button primary"
+                      disabled={busy}
+                      onClick={() => call('downloadAppUpdate')}
+                    >
+                      Download update
+                    </button>
+                  )}
+                  {s.appUpdates?.phase === 'ready' && (
+                    <button
+                      className="button primary"
+                      disabled={busy || s.running}
+                      onClick={() => call('installAppUpdate')}
+                    >
+                      {s.platform === 'darwin' ? 'Update & restart' : 'Open update installer'}
+                    </button>
+                  )}
+                </div>
+                {s.appUpdates?.phase === 'ready' && s.running && (
+                  <p>Close WoW before installing the update.</p>
+                )}
+                {s.appUpdates?.notes && (
+                  <details className="release-notes-details">
+                    <summary>What’s new in {s.appUpdates.latest}</summary>
+                    <pre className="release-notes">{s.appUpdates.notes}</pre>
+                  </details>
+                )}
+              </section>
+              <section>
+                <h3>Made to move with you</h3>
+                <p>
+                  Astral {s.appVersion || '0.5.0'} · MIT licensed · Shared Mac and Windows codebase.
+                  <br />
+                  Keyboard navigation and your system’s reduced-motion setting are respected.
+                </p>
+              </section>
+            </div>
+          )}
+          <footer className="app-footer">
+            <span>
+              ✦ ASTRAL <small>{s.appVersion || '0.5.0'}</small>
+            </span>
+            <span>Your world. In order.</span>
+          </footer>
+        </main>
+      </div>
+      {selected && (
+        <>
+          <div className="drawer-backdrop" onClick={() => setSelected(null)} />
+          <aside className="detail-drawer" aria-label="Addon details">
+            <button
+              className="icon-button drawer-close"
+              aria-label="Close details"
+              onClick={() => setSelected(null)}
+            >
+              <X size={20} />
+            </button>
+            <AddonIcon addon={selected} large />
+            <div className="eyebrow">{selected.category}</div>
+            <h2>{selected.name}</h2>
+            <p className="drawer-desc">
+              {selected.description || 'An addon installed in your local library.'}
+            </p>
+            <div className="detail-kv">
+              <span>Installed version</span>
+              <strong>{selected.version}</strong>
+              <span>Source</span>
+              <strong>{selected.source}</strong>
+              <span>Modules</span>
+              <strong>{selected.modules.length}</strong>
+              {selected.release?.tag && (
+                <>
+                  <span>Latest release</span>
+                  <strong>{selected.release.tag}</strong>
+                </>
+              )}
+            </div>
+            {selected.release?.error && (
+              <div className="inline-note warning">{selected.release.error}</div>
+            )}
+            {selected.repo && (
+              <label className="addon-auto-toggle">
+                Include in daily updates
+                <input
+                  type="checkbox"
+                  checked={!(s.updateIgnored || []).includes(selected.id)}
+                  disabled={busy}
+                  onChange={(e) => call('autoIgnore', selected.id, !e.target.checked)}
+                />
+              </label>
+            )}
+            {selected.repo && (
+              <button
+                className="button primary full"
+                disabled={busy}
+                onClick={() => (selected.status === 'update' ? update(selected) : check())}
+              >
+                {selected.status === 'update' ? 'Update addon' : 'Check release'}
+                <ArrowDownToLine size={15} />
+              </button>
+            )}
+            {selected.canImport && (
+              <button
+                className="button secondary full"
+                disabled={busy || s.running}
+                onClick={() => importZip(selected)}
+              >
+                Update from ZIP
+                <FolderOpen size={15} />
+              </button>
+            )}
+            <button
+              className="button secondary full"
+              onClick={() => call('openSource', selected.id)}
+            >
+              Official source
+              <ExternalLink size={14} />
+            </button>
+            <div className="drawer-note">
+              <ShieldCheck size={16} />
+              {selected.status === 'manual'
+                ? selected.canImport
+                  ? 'Download the ZIP from the official source, close WoW, then choose Update from ZIP. Astral checks the package for this client and saves a backup in Activity. Your settings stay in place.'
+                  : 'This addon has no connected update source yet. External folder replacements are detected when refreshed, but are not backed up by Astral.'
+                : 'Astral-managed updates back up addon files. Your saved settings stay in place.'}
+            </div>
+            {selected.release?.notes && (
+              <>
+                <h4>Release notes</h4>
+                <pre className="release-notes">{selected.release.notes}</pre>
+              </>
+            )}
+          </aside>
+        </>
+      )}
+      {(dialog || command) && (
+        <div
+          className="modal-backdrop"
+          onClick={() => {
+            setDialog(null);
+            setCommand(false);
+          }}
+        >
+          <div
+            className={'modal ' + (command ? 'command-modal' : '')}
+            role="dialog"
+            aria-modal="true"
+            aria-label={command ? 'Quick find' : 'Review change'}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {command ? (
+              <>
+                <div className="command-title">
+                  <Search size={18} />
+                  <strong>Where would you like to go?</strong>
+                  <kbd>ESC</kbd>
+                </div>
+                {[...navs, ['Settings', Settings]].map(([p, Icon]) => (
+                  <button
+                    className="command-item"
+                    key={p}
+                    onClick={() => {
+                      setPage(p);
+                      setCommand(false);
+                    }}
+                  >
+                    <Icon size={18} />
+                    {p}
+                    <ArrowRight size={15} />
+                  </button>
+                ))}
+              </>
+            ) : dialog === 'conflict' ? (
+              <>
+                <Layers size={26} />
+                <h2>Two setups. One choice.</h2>
+                <p>
+                  This computer and your cloud setup have both changed. A backup will be saved
+                  before applying a version.
+                </p>
+                <div className="modal-actions">
+                  <button
+                    className="button secondary"
+                    onClick={async () => {
+                      setDialog(null);
+                      await call('sync', 'cloud');
+                    }}
+                  >
+                    Use cloud setup
+                  </button>
+                  <button
+                    className="button primary"
+                    onClick={async () => {
+                      setDialog(null);
+                      await call('sync', 'local');
+                    }}
+                  >
+                    Keep this computer
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <History size={26} />
+                <h2>Restore {dialog.restore?.name}?</h2>
+                <p>
+                  Restore the previous addon files from {time(dialog.restore?.time)}. Your saved
+                  settings stay in place.
+                </p>
+                <div className="modal-actions">
+                  <button className="button secondary" onClick={() => setDialog(null)}>
+                    Keep current
+                  </button>
+                  <button
+                    className="button primary"
+                    onClick={async () => {
+                      const id = dialog.restore.id;
+                      setDialog(null);
+                      await call('restore', id);
+                      notify('Previous addon version restored.');
+                    }}
+                  >
+                    Restore previous
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+      {toast && (
+        <div className={'toast ' + (toast.error ? 'error' : '')} role="status">
+          {toast.error ? <AlertCircle size={17} /> : <CheckCircle2 size={17} />}
+          <span>{toast.message}</span>
+          <button
+            className="icon-button"
+            aria-label="Dismiss notification"
+            onClick={() => setToast(null)}
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+createRoot(document.getElementById('root')).render(<App />);

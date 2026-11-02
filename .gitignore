@@ -1,0 +1,16 @@
+node_modules/
+dist/
+release/
+.env*
+!.env.example
+.wrangler/
+*.log
+.DS_Store
+
+cloud/wrangler.json
+cloud/.dev.vars
+
+# Machine-specific inventory and installation receipts; never publish user data.
+public/preview.json
+docs/*installation.json
+prototypes/
