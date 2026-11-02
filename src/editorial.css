@@ -1895,3 +1895,6 @@ input[type='checkbox'] {
 .editorial .toast:not(.error) > svg {
   color: var(--accent);
 }
+.editorial .toast {
+  z-index: 1000;
+}

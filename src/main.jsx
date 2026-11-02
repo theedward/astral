@@ -153,6 +153,7 @@ function App() {
         });
       return api.onProgress((p) => {
         setProgress(p);
+        if (p.kind === 'sync-paused') notify(p.message, true);
         if (p.kind === 'sync-ready')
           api
             .sync()

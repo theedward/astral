@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.4
+
+- Keep the app responsive while macOS waits for Keychain access.
+- Time out pending credential access without deleting the saved sign-in or weakening encryption.
+- Keep error notifications visible above dialogs.
+
 ## 0.5.3
 
 - Fix client switching and ZIP imports being blocked by stale sync notifications.

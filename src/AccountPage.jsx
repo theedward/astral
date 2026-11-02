@@ -50,7 +50,7 @@ export default function AccountPage({ s, busy, call, notify, time, snapshot, con
                 disabled={busy || !s.cloudConfigured}
                 onClick={() => call('connect')}
               >
-                {busy ? 'Waiting for Battle.net…' : 'Connect Battle.net'}
+                {busy ? 'Connecting…' : 'Connect Battle.net'}
                 <ArrowUpRight size={16} />
               </button>
             </>

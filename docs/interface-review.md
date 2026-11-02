@@ -29,3 +29,5 @@ Client switching follow-up:
 - Client/folder changes now use the actual operation lock. ZIP imports had the same stale-notification guard and now rely on that lock too.
 - Folder selection accepts either supported client, opens at the current installation and preserves per-client account/sync context. Invalid folders leave the selection unchanged.
 - Error notifications now use the same neutral surface, type and placement as the current theme, with a small error accent.
+
+Post-update verification found the old synchronous OS-credential call blocked Electron's main thread inside macOS Keychain. Credential reads/writes now use Electron's asynchronous API with a bounded wait. Auto-sync checks credential availability before taking the sync-operation lock; denied or pending access preserves the encrypted session and reports a recovery action. The app never falls back to plaintext storage. Keychain permission may still be required after an app signature changes.

@@ -20,6 +20,7 @@ const updater = require('./updater.cjs'),
   projects = require('./projects.cjs');
 const scheduler = require('./scheduler.cjs');
 const clients = require('./clients.cjs');
+const credentials = require('./credentials.cjs').create(safeStorage);
 const { AppUpdates } = require('./app-updates.cjs');
 let appUpdates;
 const ackArgument = process.argv.indexOf('--astral-update-ack');
@@ -79,10 +80,7 @@ async function request(route, { method = 'GET', body, token = true } = {}) {
   if (token) {
     const stored = await engine.json(path.join(data, 'session.json'), null);
     if (!stored) throw Error('Sign in with Battle.net first.');
-    if (!safeStorage.isEncryptionAvailable())
-      throw Error('OS credential encryption is unavailable.');
-    headers.Authorization =
-      'Bearer ' + safeStorage.decryptString(Buffer.from(stored.token, 'base64'));
+    headers.Authorization = 'Bearer ' + (await credentials.decrypt(stored.token));
   }
   const r = await fetch(config.service + route, {
     method,
@@ -104,6 +102,14 @@ async function request(route, { method = 'GET', body, token = true } = {}) {
     throw Error(result.error || 'The sync service could not complete the request.');
   }
   return result;
+}
+async function signalSyncReady(message) {
+  try {
+    await credentials.available();
+    send({ kind: 'sync-ready', message });
+  } catch (error) {
+    send({ kind: 'sync-paused', message: error.message });
+  }
 }
 async function state() {
   const inventory = await engine.inventory(config.root, data);
@@ -601,8 +607,7 @@ async function main() {
     return { files: s.files, bytes: s.bytes, hash: s.hash };
   });
   handle('connect', async () => {
-    if (!safeStorage.isEncryptionAvailable())
-      throw Error('OS credential encryption is unavailable.');
+    await credentials.available();
     const verifier = crypto.randomBytes(32).toString('base64url');
     const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
     const pair = await request('/auth/device', {
@@ -621,7 +626,7 @@ async function main() {
       });
       if (result.token) {
         await engine.save(path.join(data, 'session.json'), {
-          token: safeStorage.encryptString(result.token).toString('base64'),
+          token: await credentials.encrypt(result.token),
           name: result.name,
         });
         if (config.account && !(await engine.gameRunning()))
@@ -757,7 +762,7 @@ async function main() {
     (await engine.exists(path.join(data, 'session.json'))) &&
     !(await engine.gameRunning())
   )
-    setTimeout(() => send({ kind: 'sync-ready', message: 'Checking your connected setup.' }), 750);
+    setTimeout(() => signalSyncReady('Checking your connected setup.'), 750);
   // Device agent: includes the first upload after signing in while WoW is open.
   let wasRunning = await engine.gameRunning().catch(() => false);
   const timer = setInterval(async () => {
@@ -766,11 +771,7 @@ async function main() {
       if (wasRunning !== running) win?.webContents.send('astral:changed');
       if (wasRunning && !running && config.account) {
         const s = await state();
-        if (s.signedIn)
-          win.webContents.send('astral:progress', {
-            kind: 'sync-ready',
-            message: 'WoW closed. Your settings are ready to sync.',
-          });
+        if (s.signedIn) await signalSyncReady('WoW closed. Your settings are ready to sync.');
       }
       wasRunning = running;
     } catch {}
