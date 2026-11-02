@@ -57,15 +57,11 @@ jobs:
           pattern: astral-*
           path: release
           merge-multiple: true
-      - name: Sign release metadata
-        env:
-          ASTRAL_RELEASE_PRIVATE_KEY: ${{ secrets.ASTRAL_RELEASE_PRIVATE_KEY }}
-        run: node scripts/release-manifest.mjs
-      - name: Publish complete release
+      - name: Prepare draft release for local signing
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.ref_name }}
-        run: gh release create "$RELEASE_TAG" release/Astral-* release/astral-update.json --title "Astral $RELEASE_TAG" --generate-notes --verify-tag
+        run: gh release create "$RELEASE_TAG" release/Astral-* --draft --title "Astral $RELEASE_TAG" --generate-notes --verify-tag
       - name: Remove temporary build artifacts after publishing
         env:
           GH_TOKEN: ${{ github.token }}
