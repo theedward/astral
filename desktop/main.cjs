@@ -70,10 +70,7 @@ async function persist() {
   await engine.save(path.join(data, 'config.json'), config);
 }
 async function request(route, { method = 'GET', body, token = true } = {}) {
-  if (!config.service)
-    throw Error(
-      'Connect Astral’s cloud service in Settings first. Battle.net sign-in is not configured yet.',
-    );
+  if (!config.service) throw Error('Sign-in is temporarily unavailable. Please try again later.');
   const headers = { 'Content-Type': 'application/json' };
   if (token) {
     const stored = await engine.json(path.join(data, 'session.json'), null);
@@ -142,7 +139,7 @@ async function state() {
     root: config.root,
     account: config.account,
     accounts: acc,
-    service: config.service || '',
+    cloudConfigured: !!config.service,
     signedIn: !!session,
     startup: !!config.startup,
     autoUpdates: config.autoUpdates !== false,
@@ -621,32 +618,6 @@ async function main() {
       throw Error('Close WoW so its latest settings are saved first.');
     const s = await settings.capture(config.root, config.account);
     return { files: s.files, bytes: s.bytes, hash: s.hash };
-  });
-  handle('service', async (value) => {
-    const url = new URL(value);
-    if (
-      url.protocol !== 'https:' ||
-      url.username ||
-      url.password ||
-      url.pathname !== '/' ||
-      url.search ||
-      url.hash
-    )
-      throw Error('Use the HTTPS origin of your Astral service.');
-    const health = await fetch(url.origin + '/health', { signal: AbortSignal.timeout(10000) }).then(
-      (r) => r.json(),
-    );
-    if (health.product !== 'astral-sync' || health.protocol !== 1)
-      throw Error('This address is not a compatible Astral service.');
-    if (config.service !== url.origin) {
-      await fs.rm(path.join(data, 'session.json'), { force: true });
-      config.lastHash = null;
-      config.lastSync = null;
-      config.syncRevision = 0;
-    }
-    config.service = url.origin;
-    await persist();
-    return state();
   });
   handle('connect', async () => {
     if (!safeStorage.isEncryptionAvailable())

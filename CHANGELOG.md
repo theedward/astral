@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.2
+
+- Remove service-address configuration from the app. Battle.net sign-in uses the configured Astral service automatically.
+- Keep account sign-out in the profile menu.
+- Remove developer-facing footer copy and shorten Settings explanations.
+
 ## 0.5.1
 
 - Keep packaging separate from publication, so tagged builds cannot publish before both platforms pass validation.

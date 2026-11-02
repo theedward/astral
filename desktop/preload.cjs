@@ -30,7 +30,6 @@ const actions = [
   'connect',
   'sync',
   'disconnect',
-  'service',
   'openSource',
   'openBackups',
   'openLegacyBackups',

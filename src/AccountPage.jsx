@@ -51,7 +51,7 @@ export default function AccountPage({ s, busy, call, notify, time, snapshot, con
             <>
               <button
                 className="button primary"
-                disabled={busy || !s.service}
+                disabled={busy || !s.cloudConfigured}
                 onClick={() => call('connect')}
               >
                 {busy ? 'Waiting for Battle.net…' : 'Connect Battle.net'}
@@ -67,9 +67,9 @@ export default function AccountPage({ s, busy, call, notify, time, snapshot, con
           {connectionError}
         </p>
       )}
-      {!s.service && (
+      {!s.cloudConfigured && (
         <p className="inline-note warning">
-          Connect Astral’s cloud service in Settings to enable sign-in.
+          Sign-in is temporarily unavailable. Please try again later.
         </p>
       )}
       <div className="account-layout">

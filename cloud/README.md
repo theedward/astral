@@ -8,7 +8,7 @@ Optional Cloudflare Workers + D1 service for Battle.net identity and small compr
 2. Register an OAuth client in the Battle.net Developer Portal. Set its exact callback URI to `https://YOUR-WORKER-ORIGIN/auth/callback`. Request identity scope `openid` only.
 3. Store `BNET_CLIENT_ID` and `BNET_CLIENT_SECRET` as encrypted Worker secrets. Never commit credentials.
 4. Apply the SQL migrations in order using D1 migrations, then deploy the Worker.
-5. Check `/health`, configure the service origin in Astral Settings and test browser sign-in and two-device sync.
+5. Check `/health` and configure your desktop build to use your service origin before its first sign-in. Service configuration is a developer setup step; the normal app does not expose it. Test browser sign-in and two-device sync.
 
 Stay within free-tier resources. The code does not enable billing upgrades. Application quotas bound storage and uploads, but cannot enforce a Cloudflare account billing cap.
 

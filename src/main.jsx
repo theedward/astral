@@ -92,7 +92,6 @@ function App() {
     [connectionError, setConnectionError] = useState(null),
     [selected, setSelected] = useState(null),
     [dialog, setDialog] = useState(null),
-    [service, setService] = useState(''),
     [snapshot, setSnapshot] = useState(null),
     [command, setCommand] = useState(false);
   const accountRef = useRef(null),
@@ -482,7 +481,7 @@ function App() {
                         ? 'Official releases, with the source always in view.'
                         : page === 'Activity'
                           ? 'Every update leaves a backup before anything changes.'
-                          : 'A few considered choices. Nothing to get in the way.'}
+                          : 'Choose how Astral runs and updates.'}
               </p>
             </div>
             {page === 'Addons' && (
@@ -753,11 +752,8 @@ function App() {
               <div className="honest-note">
                 <Globe size={18} />
                 <div>
-                  <strong>Source access stays explicit.</strong>
-                  <p>
-                    Wago and CurseForge need their own approved integrations. Astral currently
-                    manages the official GitHub releases listed in your library.
-                  </p>
+                  <strong>Available sources</strong>
+                  <p>GitHub is connected. CurseForge and Wago support is not available yet.</p>
                 </div>
               </div>
             </div>
@@ -877,38 +873,10 @@ function App() {
                 </label>
               </section>
               <section>
-                <h3>Astral service</h3>
-                <p>Your account and sync controls are available from the profile button.</p>
-                <form
-                  className="service-input"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    call('service', service);
-                  }}
-                >
-                  <input
-                    type="url"
-                    aria-label="Astral cloud service address"
-                    placeholder="https://your-astral-service.workers.dev"
-                    value={service || s.service}
-                    onChange={(e) => setService(e.target.value)}
-                  />
-                  <button className="button secondary" disabled={busy || !service}>
-                    Connect service
-                  </button>
-                </form>
-                {s.signedIn && (
-                  <button className="text-button" onClick={() => call('disconnect')}>
-                    <LogOut size={14} />
-                    Sign out of Battle.net
-                  </button>
-                )}
-              </section>
-              <section>
-                <h3>Keep your setup close</h3>
+                <h3>Background activity</h3>
                 <p>
-                  Astral stays in the menu bar or system tray when its window closes. Connected
-                  settings sync when the app starts and after WoW exits.
+                  Close the window to keep Astral running in the menu bar or system tray. Your
+                  settings sync after WoW closes.
                 </p>
                 <label className="setting-label">
                   Start Astral when I sign in
@@ -923,9 +891,8 @@ function App() {
               <section>
                 <h3>Addon updates</h3>
                 <p>
-                  Check connected addons daily, including Raider.IO. The background job works even
-                  when the Astral window is closed, waits for WoW to exit and saves backups before
-                  updates. Manual sources still need a downloaded ZIP.
+                  Update supported addons daily after WoW closes. Astral saves a backup before each
+                  update.
                 </p>
                 <label className="setting-label">
                   Daily addon updates
@@ -940,8 +907,8 @@ function App() {
                 <p>
                   {s.backgroundUpdates?.error ||
                     (s.backgroundUpdates?.enabled
-                      ? 'Background checks are scheduled. No separate Raider.IO app is needed.'
-                      : 'Background scheduling is not active. Open Astral to keep daily checks available.')}
+                      ? 'Daily updates run even when this window is closed.'
+                      : 'Open Astral to check for daily updates.')}
                 </p>
                 <div className="update-actions">
                   <button
@@ -966,8 +933,7 @@ function App() {
               <section>
                 <h3>Astral updates</h3>
                 <p>
-                  Version {s.appVersion || '0.5.0'} · Updates come from Astral’s GitHub releases.
-                  Downloads are verified before installation.
+                  Version {s.appVersion || '0.5.2'} · Downloads are checked before installation.
                 </p>
                 <label className="setting-label">
                   Automatically check for new versions
@@ -1032,19 +998,11 @@ function App() {
                   </details>
                 )}
               </section>
-              <section>
-                <h3>Made to move with you</h3>
-                <p>
-                  Astral {s.appVersion || '0.5.0'} · MIT licensed · Shared Mac and Windows codebase.
-                  <br />
-                  Keyboard navigation and your system’s reduced-motion setting are respected.
-                </p>
-              </section>
             </div>
           )}
           <footer className="app-footer">
             <span>
-              ✦ ASTRAL <small>{s.appVersion || '0.5.0'}</small>
+              ✦ ASTRAL <small>{s.appVersion || '0.5.2'}</small>
             </span>
             <span>Your world. In order.</span>
           </footer>
