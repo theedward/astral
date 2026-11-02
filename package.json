@@ -1,6 +1,6 @@
 {
   "name": "astral-companion",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -12,7 +12,7 @@
     "start": "electron .",
     "test": "node --test tests/*.test.mjs",
     "package:mac": "npm run build && node scripts/package-mac.mjs",
-    "package:windows": "npm run build && electron-builder --win nsis --x64"
+    "package:windows": "npm run build && electron-builder --win nsis --x64 --publish never"
   },
   "dependencies": {
     "@wowserhq/format": "^0.28.0",

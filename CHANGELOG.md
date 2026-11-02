@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.1
+
+- Keep packaging separate from publication, so tagged builds cannot publish before both platforms pass validation.
+- First public release includes automatic app checks, signed downloads and the Mac update/restart flow introduced in 0.5.0.
+
 ## 0.5.0
 
 - Check for Astral application releases automatically once a day, separately from addon updates.

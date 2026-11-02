@@ -18,6 +18,8 @@ try {
       'dir',
       'zip',
       '--arm64',
+      '--publish',
+      'never',
       `--config.directories.output=${output}`,
     ],
     { cwd: root, maxBuffer: 10 * 1024 * 1024 },
