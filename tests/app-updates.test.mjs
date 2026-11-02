@@ -150,9 +150,17 @@ for (const healthy of [true, false])
   );
 
 test('Mac application archives permit internal framework links but reject traversal and writes through links', async (t) => {
-  const data = await fixture(t), file = path.join(data, 'app.zip');
+  const data = await fixture(t),
+    file = path.join(data, 'app.zip');
   const info = { 'Astral.app/Contents/Info.plist': '<plist/>' };
-  await fs.writeFile(file, zip({ ...info, 'Astral.app/Contents/Frameworks/Current': { data: 'A', mode: 0o120777 }, 'Astral.app/Contents/Frameworks/A/file': 'binary' }));
+  await fs.writeFile(
+    file,
+    zip({
+      ...info,
+      'Astral.app/Contents/Frameworks/Current': { data: 'A', mode: 0o120777 },
+      'Astral.app/Contents/Frameworks/A/file': 'binary',
+    }),
+  );
   await inspectZip(file);
   for (const entry of [
     { 'Astral.app/../../escape': 'bad' },
