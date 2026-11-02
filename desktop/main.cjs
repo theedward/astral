@@ -19,6 +19,7 @@ const flavors = require('./flavors.cjs');
 const updater = require('./updater.cjs'),
   projects = require('./projects.cjs');
 const scheduler = require('./scheduler.cjs');
+const clients = require('./clients.cjs');
 const { AppUpdates } = require('./app-updates.cjs');
 let appUpdates;
 const ackArgument = process.argv.indexOf('--astral-update-ack');
@@ -45,6 +46,9 @@ const mutations = new Set([
   'deleteCloud',
   'installProject',
   'installAppUpdate',
+  'client',
+  'chooseRoot',
+  'check',
 ]);
 async function exclusive(fn) {
   if (taskActive) throw Error('Wait until the current operation finishes.');
@@ -492,28 +496,9 @@ async function main() {
     return state();
   });
   handle('client', async (type) => {
-    if (!['retail', 'forever'].includes(type)) throw Error('Unknown game client.');
-    if (Object.keys(progress).length) throw Error('Wait until the current operation finishes.');
-    const current = flavors.flavor(config.root);
-    config.spaces = config.spaces || {};
-    config.spaces[current] = {
-      root: config.root,
-      account: config.account,
-      lastHash: config.lastHash,
-      lastSync: config.lastSync,
-      syncRevision: config.syncRevision,
-    };
-    const next = config.spaces[type] || {};
-    const root =
-      next.root ||
-      path.join(path.dirname(config.root), type === 'forever' ? '_forever_' : '_retail_');
-    if (!(await engine.exists(root))) throw Error('Choose the installed game folder first.');
-    Object.assign(
-      config,
-      { root, account: null, lastHash: null, lastSync: null, syncRevision: 0 },
-      next,
-    );
+    config = await clients.select(config, { type });
     releases = {};
+    send({});
     await persist();
     return state();
   });
@@ -555,7 +540,6 @@ async function main() {
     }
   });
   handle('importZip', async (id) => {
-    if (Object.keys(progress).length) throw Error('Wait until the current operation finishes.');
     const addon = engine.catalog.find((a) => a.id === id);
     if (!addon || addon.local || !flavors.allowed(addon, flavors.flavor(config.root)))
       throw Error('ZIP updates are unavailable for this addon.');
@@ -588,18 +572,15 @@ async function main() {
   });
   handle('chooseRoot', async () => {
     const r = await dialog.showOpenDialog(win, {
-      title: 'Select your WoW _retail_ folder',
+      title: 'Select your WoW game folder',
+      defaultPath: config.root,
+      buttonLabel: 'Select folder',
       properties: ['openDirectory'],
     });
-    if (!r.canceled) {
-      if (!(await engine.exists(path.join(r.filePaths[0], 'Interface', 'AddOns'))))
-        throw Error('Select the _retail_ folder containing Interface/AddOns.');
-      config.root = r.filePaths[0];
-      config.account = null;
-      config.lastHash = null;
-      config.lastSync = null;
-      config.syncRevision = 0;
+    if (!r.canceled && r.filePaths[0]) {
+      config = await clients.select(config, { root: r.filePaths[0] });
       releases = {};
+      send({});
       await persist();
     }
     return state();

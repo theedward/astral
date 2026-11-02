@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.3
+
+- Fix client switching and ZIP imports being blocked by stale sync notifications.
+- Preserve each client’s account and sync history when selecting a game folder.
+- Support both Retail and Forever in the folder picker and theme error notifications consistently.
+
+- Replace slogan headings with page names and bring controls above the fold.
+- Remove repeated helper text, source badges, library descriptions and promotional blocks.
+- Simplify Account & sync and group backup counts with their lists.
+- Keep compatibility results, sync conflicts, restore/delete warnings and instructions for disabled actions.
+- Show inventory loading and retry states instead of a misleading empty library.
+
 ## 0.5.2
 
 - Remove service-address configuration from the app. Battle.net sign-in uses the configured Astral service automatically.

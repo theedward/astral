@@ -3,7 +3,6 @@ import { createRoot } from 'react-dom/client';
 import {
   ArrowUpRight,
   ArrowDownToLine,
-  ArrowUpFromLine,
   Search,
   RefreshCw,
   Check,
@@ -17,22 +16,16 @@ import {
   Settings,
   History,
   Globe,
-  ShieldCheck,
   FolderOpen,
   ExternalLink,
   X,
-  Command,
   HardDrive,
-  WifiOff,
   AlertCircle,
   LoaderCircle,
   CheckCircle2,
-  GitBranch,
   ArrowRight,
   LogOut,
-  SlidersHorizontal,
   MoreHorizontal,
-  Sparkles,
   Sun,
   Moon,
 } from 'lucide-react';
@@ -52,7 +45,7 @@ function AddonIcon({ addon, large = false }) {
       className={
         'addon-icon ' + (large ? 'large ' : '') + (artwork ? 'original-art ' : '') + addon.color
       }
-      title={artwork ? addon.name : 'No bundled icon available'}
+      aria-hidden="true"
     >
       {artwork ? (
         <img src={artwork} alt="" aria-hidden="true" decoding="async" />
@@ -79,7 +72,7 @@ const empty = {
 };
 const api = window.astral;
 function App() {
-  const [s, setS] = useState(empty),
+  const [s, setState] = useState(empty),
     [page, setPage] = useState('Addons'),
     [theme, setTheme] = useState(() => localStorage.getItem('astral-theme') || 'dark'),
     [accountOpen, setAccountOpen] = useState(false),
@@ -90,10 +83,12 @@ function App() {
     [progress, setProgress] = useState({}),
     [toast, setToast] = useState(null),
     [connectionError, setConnectionError] = useState(null),
+    [loadError, setLoadError] = useState(null),
     [selected, setSelected] = useState(null),
     [dialog, setDialog] = useState(null),
     [snapshot, setSnapshot] = useState(null),
     [command, setCommand] = useState(false);
+  const setS = (value) => setState({ ...value, loaded: true });
   const accountRef = useRef(null),
     toolsRef = useRef(null);
   useEffect(() => {
@@ -114,7 +109,7 @@ function App() {
     setAccountOpen(false);
     setToolsOpen(false);
   };
-  const busy = requestBusy || progress.kind === 'update';
+  const busy = requestBusy || progress.kind === 'update' || !s.loaded;
   const search = useRef(null),
     toastTimer = useRef(null);
   const notify = (message, error = false) => {
@@ -152,7 +147,10 @@ function App() {
       api
         .state()
         .then(setS)
-        .catch((e) => notify(e.message, true));
+        .catch((e) => {
+          setLoadError(e.message);
+          notify(e.message, true);
+        });
       return api.onProgress((p) => {
         setProgress(p);
         if (p.kind === 'sync-ready')
@@ -168,9 +166,12 @@ function App() {
       });
     }
     fetch('/preview.json')
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw Error('The preview could not be loaded.');
+        return r.json();
+      })
       .then(setS)
-      .catch(() => {});
+      .catch((e) => setLoadError(e.message));
   }, []);
   useEffect(
     () =>
@@ -419,282 +420,207 @@ function App() {
           </div>
         </header>
         <main data-page={page}>
-          <div className="eyebrow">
-            {page === 'Addons'
-              ? 'YOUR INTERFACE. IN BALANCE.'
-              : page === 'Your setup'
-                ? 'FEELS LIKE HOME. ON EVERY COMPUTER.'
-                : page === 'Sources'
-                  ? 'STRAIGHT FROM THE PEOPLE WHO MAKE THEM.'
-                  : page === 'Activity'
-                    ? 'A CLEAR TRAIL. AN EASY WAY BACK.'
-                    : 'MAKE ASTRAL YOURS.'}
-          </div>
           <div className="page-heading">
             <div>
               <h1>
-                {page === 'Addons' ? (
-                  <>
-                    Your world.
-                    <br />
-                    In order.
-                  </>
-                ) : page === 'Your setup' ? (
-                  <>
-                    Your setup.
-                    <br />
-                    Everywhere.
-                  </>
-                ) : page === 'Discover' ? (
-                  <>
-                    Find your
-                    <br />
-                    next addon.
-                  </>
-                ) : page === 'Sources' ? (
-                  <>
-                    Know the
-                    <br />
-                    source.
-                  </>
-                ) : page === 'Activity' ? (
-                  <>
-                    Activity &<br />
-                    backups.
-                  </>
-                ) : (
-                  <>
-                    Make it
-                    <br />
-                    yours.
-                  </>
-                )}
+                {page === 'Addons' ? 'Library' : page === 'Your setup' ? 'Account & sync' : page}
               </h1>
-              <p>
-                {page === 'Discover'
-                  ? 'Search addon projects and review compatible releases.'
-                  : page === 'Addons'
-                    ? `${s.addons.length} addons · ${updates} updates`
-                    : page === 'Your setup'
-                      ? 'The interface you know. Ready when you are.'
-                      : page === 'Sources'
-                        ? 'Official releases, with the source always in view.'
-                        : page === 'Activity'
-                          ? 'Every update leaves a backup before anything changes.'
-                          : 'Choose how Astral runs and updates.'}
-              </p>
+              {page === 'Addons' && s.loaded && <p>{s.addons.length} addons</p>}
             </div>
             {page === 'Addons' && (
-              <button className="button secondary" disabled={busy} onClick={check}>
-                <RefreshCw size={15} className={busy ? 'spin' : ''} />
-                {progress.kind === 'check' ? 'Checking…' : 'Check for updates'}
-              </button>
+              <div className="page-actions">
+                <button className="button secondary" disabled={busy} onClick={check}>
+                  <RefreshCw size={15} className={busy ? 'spin' : ''} />
+                  {progress.kind === 'check' ? 'Checking…' : 'Check for updates'}
+                </button>
+                {updates > 0 && (
+                  <button
+                    className="button primary"
+                    disabled={busy || s.running}
+                    onClick={updateAll}
+                  >
+                    <ArrowDownToLine size={15} />
+                    Update all ({updates})
+                  </button>
+                )}
+                {updates > 0 && s.running && (
+                  <span className="update-wait" role="status">
+                    Close WoW to update.
+                  </span>
+                )}
+              </div>
             )}
           </div>
-          {!api && (
-            <div className="preview-banner">
-              Browser preview · real local inventory · actions are available in the desktop app
-            </div>
-          )}
-          {page === 'Addons' && (
-            <>
-              <div className={'status-strip ' + (updates ? 'has-updates' : '')}>
-                <div className="status-orbit">
-                  {updates ? <ArrowDownToLine size={20} /> : <Check size={21} />}
-                </div>
-                <div>
-                  <strong>
-                    {updates
-                      ? `${updates} update${updates === 1 ? '' : 's'} ready when you are`
-                      : s.addons.some((a) => a.status === 'unchecked')
-                        ? 'Your addons are in place'
-                        : 'You’re all caught up'}
-                  </strong>
-                  <p>
-                    {updates
-                      ? 'Your current versions will be backed up before updating.'
-                      : s.addons.some((a) => a.status === 'unchecked')
-                        ? 'Check official releases to see what’s new.'
-                        : 'Supported official sources have been checked.'}
-                  </p>
-                </div>
-                <div className="strip-trailing">
-                  {updates ? (
-                    <button className="button primary" disabled={busy} onClick={updateAll}>
-                      Update available <ArrowDownToLine size={15} />
-                    </button>
-                  ) : (
-                    <>
-                      <span className="tiny-star">✦</span>
-                      <span>{s.folderCount || 0} addon folders</span>
-                    </>
-                  )}
-                </div>
-              </div>
-              <div className="list-controls">
-                <div className="tabs">
-                  {['All addons', 'Updates', 'Manual'].map((t) => (
-                    <button
-                      key={t}
-                      className={filter === t ? 'selected' : ''}
-                      onClick={() => setFilter(t)}
-                    >
-                      {t}
-                      {t === 'Updates' && updates > 0 && <span>{updates}</span>}
-                    </button>
-                  ))}
-                </div>
-                <label className="search-box">
-                  <Search size={15} />
-                  <input
-                    ref={search}
-                    aria-label="Search addons"
-                    placeholder="Find an addon…"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                  />
-                  {query && (
-                    <button aria-label="Clear search" onClick={() => setQuery('')}>
-                      <X size={13} />
-                    </button>
-                  )}
-                </label>
-              </div>
-              <section className="addon-list" aria-label="Installed addons">
-                <div className="table-head">
-                  <span>ADDON</span>
-                  <span>SOURCE</span>
-                  <span>VERSION</span>
-                  <span>STATUS</span>
-                  <span />
-                </div>
-                {filtered.length ? (
-                  filtered.map((a) => (
-                    <div
-                      key={a.id}
-                      className={'addon-row ' + (selected?.id === a.id ? 'chosen' : '')}
-                    >
-                      <button className="addon-main" onClick={() => setSelected(a)}>
-                        <AddonIcon addon={a} />
-                        <span className="addon-name">
-                          <strong>{a.name}</strong>
-                          <small>
-                            {a.description || a.category}
-                            {a.modules.length > 1 ? ' · ' + a.modules.length + ' modules' : ''}
-                          </small>
-                        </span>
-                      </button>
-                      <span className="source-cell">
-                        {a.repo ? (
-                          <ProviderMark name="GitHub" small />
-                        ) : a.local ? (
-                          <HardDrive size={12} />
-                        ) : (
-                          <Globe size={12} />
-                        )}{' '}
-                        <span title={a.source}>{a.local ? 'Astral' : a.source}</span>
-                      </span>
-                      <span className="version" title={a.version}>
-                        {a.id === 'rio'
-                          ? (a.version.match(/v\d{12}/) || [a.version])[0]
-                          : a.version}
-                      </span>
-                      <span className={'status-label ' + a.status}>
-                        {a.release?.error ? (
-                          <>
-                            <AlertCircle size={12} />
-                            Needs attention
-                          </>
-                        ) : progress.id === a.id && progress.kind === 'update' ? (
-                          <>
-                            <LoaderCircle size={12} className="spin" />
-                            {progress.percent}%
-                          </>
-                        ) : a.status === 'update' ? (
-                          <>
-                            <span className="small-dot amber" />
-                            Update ready
-                          </>
-                        ) : a.status === 'current' ? (
-                          <>
-                            <Check size={12} />
-                            Up to date
-                          </>
-                        ) : a.status === 'local' ? (
-                          'Development'
-                        ) : a.status === 'manual' ? (
-                          'Manual source'
-                        ) : (
-                          'Not checked'
-                        )}
-                      </span>
-                      <button
-                        className="row-action"
-                        disabled={busy || (s.running && a.status === 'update')}
-                        aria-label={
-                          a.status === 'update' ? 'Update ' + a.name : 'Details for ' + a.name
-                        }
-                        onClick={() => (a.status === 'update' ? update(a) : setSelected(a))}
-                      >
-                        {a.status === 'update' ? (
-                          <ArrowDownToLine size={16} />
-                        ) : (
-                          <MoreHorizontal size={17} />
-                        )}
-                      </button>
-                    </div>
-                  ))
-                ) : (
-                  <div className="empty">
-                    <Package size={28} />
-                    <h3>
-                      {s.addons.length ? 'No addons match that search' : 'Choose your WoW folder'}
-                    </h3>
-                    <p>
-                      {s.addons.length
-                        ? 'Try another name or switch the filter.'
-                        : 'Astral will find your installed addons without changing them.'}
-                    </p>
-                    {!s.addons.length && (
-                      <button className="button secondary" onClick={() => call('chooseRoot')}>
-                        Find World of Warcraft
-                      </button>
-                    )}
-                  </div>
-                )}
-              </section>
-              <div className="list-footer">
-                <span>
-                  <ShieldCheck size={13} />
-                  Backed up before updating
-                </span>
-                <span>Official sources · {s.addons.length} addon groups</span>
-              </div>
-              <button className="setup-invitation" onClick={() => setPage('Your setup')}>
-                <div className="invitation-icon">
-                  <Layers size={22} />
-                </div>
-                <div>
-                  <strong>Your addons are only half the story.</strong>
-                  <p>Bring your profiles, keybinds and familiar layout along.</p>
-                </div>
-                <span>
-                  Meet your setup <ArrowRight size={15} />
-                </span>
-              </button>
-            </>
-          )}
           {page !== 'Settings' && ['available', 'ready'].includes(s.appUpdates?.phase) && (
-            <div className="legacy-backups" role="status">
-              <div>
-                <strong>Astral {s.appUpdates.latest} is available</strong>
-                <p>A new version is ready when you are.</p>
-              </div>
+            <div className="legacy-backups app-update-notice" role="status">
+              <strong>Astral {s.appUpdates.latest} is available</strong>
               <button className="text-button" onClick={() => navigate('Settings')}>
                 View update <ArrowRight size={14} />
               </button>
             </div>
           )}
+          {!api && (
+            <div className="preview-banner">
+              Browser preview · real local inventory · actions are available in the desktop app
+            </div>
+          )}
+          {page === 'Addons' &&
+            (!s.loaded ? (
+              <div className="empty" role="status">
+                {loadError ? (
+                  <>
+                    <h3>Couldn’t load addons</h3>
+                    <button className="button secondary" onClick={() => window.location.reload()}>
+                      Retry
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <LoaderCircle className="spin" size={22} />
+                    <p>Loading addons…</p>
+                  </>
+                )}
+              </div>
+            ) : (
+              <>
+                <div className="list-controls">
+                  <div className="tabs">
+                    {['All addons', 'Updates', 'Manual'].map((t) => (
+                      <button
+                        key={t}
+                        className={filter === t ? 'selected' : ''}
+                        onClick={() => setFilter(t)}
+                      >
+                        {t}
+                        {t === 'Updates' && updates > 0 && <span>{updates}</span>}
+                      </button>
+                    ))}
+                  </div>
+                  <label className="search-box">
+                    <Search size={15} />
+                    <input
+                      ref={search}
+                      aria-label="Search addons"
+                      placeholder="Find an addon…"
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                    />
+                    {query && (
+                      <button aria-label="Clear search" onClick={() => setQuery('')}>
+                        <X size={13} />
+                      </button>
+                    )}
+                  </label>
+                </div>
+                <section className="addon-list" aria-label="Installed addons">
+                  <div className="table-head">
+                    <span>ADDON</span>
+                    <span>SOURCE</span>
+                    <span>VERSION</span>
+                    <span>STATUS</span>
+                    <span />
+                  </div>
+                  {filtered.length ? (
+                    filtered.map((a) => (
+                      <div
+                        key={a.id}
+                        className={'addon-row ' + (selected?.id === a.id ? 'chosen' : '')}
+                      >
+                        <button className="addon-main" onClick={() => setSelected(a)}>
+                          <AddonIcon addon={a} />
+                          <span className="addon-name">
+                            <strong>{a.name}</strong>
+                          </span>
+                        </button>
+                        <span className="source-cell">
+                          {a.repo ? (
+                            <ProviderMark name="GitHub" small />
+                          ) : a.local ? (
+                            <HardDrive size={12} />
+                          ) : (
+                            <Globe size={12} />
+                          )}{' '}
+                          <span title={a.repo || undefined}>{a.local ? 'Astral' : a.source}</span>
+                        </span>
+                        <span className="version" title={a.version}>
+                          {a.id === 'rio'
+                            ? (a.version.match(/v\d{12}/) || [a.version])[0]
+                            : a.version}
+                        </span>
+                        {a.repo && (
+                          <span className={'status-label ' + a.status}>
+                            {a.release?.error ? (
+                              <>
+                                <AlertCircle size={12} />
+                                Needs attention
+                              </>
+                            ) : progress.id === a.id && progress.kind === 'update' ? (
+                              <>
+                                <LoaderCircle size={12} className="spin" />
+                                {progress.percent}%
+                              </>
+                            ) : a.status === 'update' ? (
+                              <>
+                                <span className="small-dot amber" />
+                                Update ready
+                              </>
+                            ) : a.status === 'current' ? (
+                              <>
+                                <Check size={12} />
+                                Up to date
+                              </>
+                            ) : a.status === 'local' ? (
+                              'Development'
+                            ) : a.status === 'manual' ? (
+                              'Manual source'
+                            ) : (
+                              'Not checked'
+                            )}
+                          </span>
+                        )}
+                        <button
+                          className="row-action"
+                          disabled={busy || (s.running && a.status === 'update')}
+                          aria-label={
+                            a.status === 'update' ? 'Update ' + a.name : 'Details for ' + a.name
+                          }
+                          onClick={() => (a.status === 'update' ? update(a) : setSelected(a))}
+                        >
+                          {a.status === 'update' ? (
+                            <ArrowDownToLine size={16} />
+                          ) : (
+                            <MoreHorizontal size={17} />
+                          )}
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="empty">
+                      <Package size={28} />
+                      <h3>
+                        {s.addons.length ? 'No addons match that search' : 'Choose your WoW folder'}
+                      </h3>
+                      {s.addons.length > 0 && (
+                        <button
+                          className="button secondary"
+                          onClick={() => {
+                            setQuery('');
+                            setFilter('All addons');
+                          }}
+                        >
+                          Clear filters
+                        </button>
+                      )}
+                      {!s.addons.length && (
+                        <button className="button secondary" onClick={() => call('chooseRoot')}>
+                          Find World of Warcraft
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </section>
+              </>
+            ))}
           {page === 'Discover' && (
             <DiscoveryPanel
               s={s}
@@ -728,7 +654,6 @@ function App() {
                   </span>
                   <div>
                     <h3>{p.name}</h3>
-                    <p>{p.detail}</p>
                     {p.name === 'GitHub' && (
                       <small>
                         {s.addons.filter((a) => a.repo).length} installed addon groups use GitHub
@@ -745,17 +670,10 @@ function App() {
                   </div>
                   <span className={'provider-status ' + (p.available ? 'ready' : '')}>
                     {p.available ? <Check size={13} /> : <span className="small-dot amber" />}
-                    {p.status}
+                    {p.available ? 'Available' : 'Unavailable'}
                   </span>
                 </article>
               ))}
-              <div className="honest-note">
-                <Globe size={18} />
-                <div>
-                  <strong>Available sources</strong>
-                  <p>GitHub is connected. CurseForge and Wago support is not available yet.</p>
-                </div>
-              </div>
             </div>
           )}
           {page === 'Activity' && (
@@ -764,7 +682,6 @@ function App() {
                 <div className="legacy-backups">
                   <div>
                     <strong>Earlier Raider.IO backups</strong>
-                    <p>Backups from the retired helper are preserved on this computer.</p>
                   </div>
                   <button className="text-button" onClick={() => call('openLegacyBackups')}>
                     Open archive
@@ -797,7 +714,7 @@ function App() {
                 </div>
               ))}
               <div className="section-heading">
-                <h3>{s.backups.length} saved update backups</h3>
+                <h3>Backups ({s.backups.length})</h3>
                 <button className="button secondary" onClick={() => call('openBackups')}>
                   <FolderOpen size={14} />
                   Open backups
@@ -835,12 +752,10 @@ function App() {
               ) : (
                 <div className="empty activity-empty">
                   <History size={30} />
-                  <h3>A fresh start.</h3>
-                  <p>
-                    Your first addon update will appear here,
-                    <br />
-                    along with a backup of the previous version.
-                  </p>
+                  <h3>No backups yet</h3>
+                  <button className="button secondary" onClick={() => navigate('Addons')}>
+                    Open library
+                  </button>
                 </div>
               )}
             </>
@@ -848,8 +763,7 @@ function App() {
           {page === 'Settings' && (
             <div className="settings-list">
               <section>
-                <h3>World of Warcraft</h3>
-                <p>Astral reads your Retail installation.</p>
+                <h3>WoW: {s.flavor === 'forever' ? 'Forever' : 'Retail'}</h3>
                 <div className="path-field">
                   <FolderOpen size={17} />
                   <code>{s.root || 'No game folder selected'}</code>
@@ -873,11 +787,7 @@ function App() {
                 </label>
               </section>
               <section>
-                <h3>Background activity</h3>
-                <p>
-                  Close the window to keep Astral running in the menu bar or system tray. Your
-                  settings sync after WoW closes.
-                </p>
+                <h3>Startup</h3>
                 <label className="setting-label">
                   Start Astral when I sign in
                   <input
@@ -890,12 +800,8 @@ function App() {
               </section>
               <section>
                 <h3>Addon updates</h3>
-                <p>
-                  Update supported addons daily after WoW closes. Astral saves a backup before each
-                  update.
-                </p>
                 <label className="setting-label">
-                  Daily addon updates
+                  Update addons daily
                   <input
                     type="checkbox"
                     aria-label="Daily addon updates"
@@ -904,12 +810,12 @@ function App() {
                     onChange={(e) => call('autoUpdates', e.target.checked)}
                   />
                 </label>
-                <p>
-                  {s.backgroundUpdates?.error ||
-                    (s.backgroundUpdates?.enabled
-                      ? 'Daily updates run even when this window is closed.'
-                      : 'Open Astral to check for daily updates.')}
-                </p>
+                {(s.backgroundUpdates?.error ||
+                  (s.autoUpdates && !s.backgroundUpdates?.enabled)) && (
+                  <p role="status">
+                    {s.backgroundUpdates?.error || 'Keep Astral open for daily updates.'}
+                  </p>
+                )}
                 <div className="update-actions">
                   <button
                     className="button secondary"
@@ -932,11 +838,9 @@ function App() {
               </section>
               <section>
                 <h3>Astral updates</h3>
-                <p>
-                  Version {s.appVersion || '0.5.2'} · Downloads are checked before installation.
-                </p>
+                <p>Version {s.appVersion || '0.5.3'}</p>
                 <label className="setting-label">
-                  Automatically check for new versions
+                  Check daily
                   <input
                     type="checkbox"
                     aria-label="Check for Astral updates automatically"
@@ -958,8 +862,7 @@ function App() {
                             ? 'You’re up to date.'
                             : s.appUpdates?.phase === 'unpublished'
                               ? 'The first public release hasn’t been published yet.'
-                              : s.appUpdates?.error ||
-                                'Checks once a day while Astral is running. Installation waits for you.'}
+                              : s.appUpdates?.error || null}
                 </p>
                 <div className="update-actions">
                   <button
@@ -1000,12 +903,6 @@ function App() {
               </section>
             </div>
           )}
-          <footer className="app-footer">
-            <span>
-              ✦ ASTRAL <small>{s.appVersion || '0.5.2'}</small>
-            </span>
-            <span>Your world. In order.</span>
-          </footer>
         </main>
       </div>
       {selected && (
@@ -1020,18 +917,13 @@ function App() {
               <X size={20} />
             </button>
             <AddonIcon addon={selected} large />
-            <div className="eyebrow">{selected.category}</div>
             <h2>{selected.name}</h2>
-            <p className="drawer-desc">
-              {selected.description || 'An addon installed in your local library.'}
-            </p>
+            <p className="drawer-desc">{selected.description}</p>
             <div className="detail-kv">
               <span>Installed version</span>
               <strong>{selected.version}</strong>
               <span>Source</span>
-              <strong>{selected.source}</strong>
-              <span>Modules</span>
-              <strong>{selected.modules.length}</strong>
+              <strong>{selected.local ? 'Astral' : selected.source}</strong>
               {selected.release?.tag && (
                 <>
                   <span>Latest release</span>
@@ -1056,7 +948,7 @@ function App() {
             {selected.repo && (
               <button
                 className="button primary full"
-                disabled={busy}
+                disabled={busy || (s.running && selected.status === 'update')}
                 onClick={() => (selected.status === 'update' ? update(selected) : check())}
               >
                 {selected.status === 'update' ? 'Update addon' : 'Check release'}
@@ -1077,17 +969,21 @@ function App() {
               className="button secondary full"
               onClick={() => call('openSource', selected.id)}
             >
-              Official source
+              {selected.repo ? 'View on GitHub' : 'Download page'}
               <ExternalLink size={14} />
             </button>
-            <div className="drawer-note">
-              <ShieldCheck size={16} />
-              {selected.status === 'manual'
-                ? selected.canImport
-                  ? 'Download the ZIP from the official source, close WoW, then choose Update from ZIP. Astral checks the package for this client and saves a backup in Activity. Your settings stay in place.'
-                  : 'This addon has no connected update source yet. External folder replacements are detected when refreshed, but are not backed up by Astral.'
-                : 'Astral-managed updates back up addon files. Your saved settings stay in place.'}
-            </div>
+            {selected.status === 'manual' && (
+              <div className="drawer-note">
+                {selected.canImport
+                  ? 'Download the addon ZIP, then choose Update from ZIP.'
+                  : 'Update this addon manually. Changes made outside Astral are not backed up.'}
+              </div>
+            )}
+            {s.running && (selected.status === 'update' || selected.canImport) && (
+              <p role="status" className="inline-note warning">
+                Close WoW before updating.
+              </p>
+            )}
             {selected.release?.notes && (
               <>
                 <h4>Release notes</h4>
@@ -1116,7 +1012,7 @@ function App() {
               <>
                 <div className="command-title">
                   <Search size={18} />
-                  <strong>Where would you like to go?</strong>
+                  <strong>Go to</strong>
                   <kbd>ESC</kbd>
                 </div>
                 {[...navs, ['Settings', Settings]].map(([p, Icon]) => (
@@ -1129,7 +1025,7 @@ function App() {
                     }}
                   >
                     <Icon size={18} />
-                    {p}
+                    {p === 'Addons' ? 'Library' : p === 'Your setup' ? 'Account & sync' : p}
                     <ArrowRight size={15} />
                   </button>
                 ))}
@@ -1137,7 +1033,7 @@ function App() {
             ) : dialog === 'conflict' ? (
               <>
                 <Layers size={26} />
-                <h2>Two setups. One choice.</h2>
+                <h2>Choose which setup to keep</h2>
                 <p>
                   This computer and your cloud setup have both changed. A backup will be saved
                   before applying a version.
@@ -1159,7 +1055,7 @@ function App() {
                       await call('sync', 'local');
                     }}
                   >
-                    Keep this computer
+                    Use this computer
                   </button>
                 </div>
               </>
@@ -1173,7 +1069,7 @@ function App() {
                 </p>
                 <div className="modal-actions">
                   <button className="button secondary" onClick={() => setDialog(null)}>
-                    Keep current
+                    Cancel
                   </button>
                   <button
                     className="button primary"
@@ -1193,7 +1089,10 @@ function App() {
         </div>
       )}
       {toast && (
-        <div className={'toast ' + (toast.error ? 'error' : '')} role="status">
+        <div
+          className={'toast ' + (toast.error ? 'error' : '')}
+          role={toast.error ? 'alert' : 'status'}
+        >
           {toast.error ? <AlertCircle size={17} /> : <CheckCircle2 size={17} />}
           <span>{toast.message}</span>
           <button

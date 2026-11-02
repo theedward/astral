@@ -1,6 +1,6 @@
 import useDialog from './useDialog.js';
 import React, { useEffect, useState } from 'react';
-import { Cloud, Monitor, History, RefreshCw, X, LogOut, Trash2, AlertCircle } from 'lucide-react';
+import { Monitor, History, RefreshCw, X, LogOut, Trash2, AlertCircle } from 'lucide-react';
 const size = (n) =>
   n < 1024
     ? `${n} B`
@@ -70,10 +70,7 @@ export default function CloudPanel({ s, call, busy, notify }) {
   };
   return (
     <section className="cloud-panel">
-      <div className="section-heading">
-        <h3>
-          <Cloud size={17} /> Connected setup
-        </h3>
+      <div className="section-heading cloud-refresh">
         <button className="text-button" disabled={busy} onClick={load}>
           <RefreshCw size={13} /> Refresh
         </button>
@@ -86,19 +83,6 @@ export default function CloudPanel({ s, call, busy, notify }) {
         <p className="muted">Loading your cloud setup…</p>
       ) : (
         <>
-          <div className="cloud-summary">
-            <div>
-              <strong>{info.devices.length}</strong>
-              <span>connected {info.devices.length === 1 ? 'computer' : 'computers'}</span>
-            </div>
-            <div>
-              <strong>{info.history.length}</strong>
-              <span>
-                saved {s.flavor === 'forever' ? 'Forever' : 'Retail'}{' '}
-                {info.history.length === 1 ? 'version' : 'versions'}
-              </span>
-            </div>
-          </div>
           {info.usage.paused && (
             <p role="status" className="inline-note warning">
               Cloud sync is temporarily paused. Your saved backups are still available.
@@ -107,7 +91,7 @@ export default function CloudPanel({ s, call, busy, notify }) {
           <div className="cloud-columns">
             <section>
               <h4>
-                <Monitor size={15} /> Connected computers
+                <Monitor size={15} /> Computers ({info.devices.length})
               </h4>
               <div className="control-list">
                 {info.devices.map((d) => (
@@ -130,7 +114,8 @@ export default function CloudPanel({ s, call, busy, notify }) {
             </section>
             <section>
               <h4>
-                <History size={15} /> {s.flavor === 'forever' ? 'Forever' : 'Retail'} backup history
+                <History size={15} /> {s.flavor === 'forever' ? 'Forever' : 'Retail'} backups (
+                {info.history.length})
               </h4>
               <div className="control-list">
                 {info.history.length ? (
@@ -169,7 +154,6 @@ export default function CloudPanel({ s, call, busy, notify }) {
             <summary>Manage cloud data</summary>
             <div className="cloud-delete">
               <div>
-                <h4>Your cloud data</h4>
                 <p>
                   Remove every saved setup and sign out every computer. Local game files stay in
                   place.

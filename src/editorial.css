@@ -1745,3 +1745,153 @@ input[type='checkbox'] {
   width: 32px;
   height: 32px;
 }
+
+/* Task-focused screens: direct titles and controls before supporting detail. */
+.editorial main .page-heading,
+.editorial main:not([data-page='Addons']) .page-heading {
+  margin-bottom: 28px;
+  align-items: center;
+}
+.editorial main .page-heading h1,
+.editorial main[data-page='Addons'] .page-heading h1,
+.editorial main:not([data-page='Addons']) .page-heading h1 {
+  font-size: clamp(36px, 4.5vw, 58px);
+  line-height: 1.06;
+  letter-spacing: -0.05em;
+  word-spacing: normal;
+}
+.editorial main .page-heading p,
+.editorial main[data-page='Addons'] .page-heading p {
+  font-size: 13px;
+  margin-top: 8px;
+  color: var(--muted);
+}
+.page-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.addon-list > .empty {
+  grid-column: 1 / -1;
+}
+.addon-row {
+  min-height: 112px;
+}
+.addon-name strong {
+  font-size: 20px;
+}
+.scope-heading {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0 0 5px;
+}
+.sync-scope-row {
+  padding: 17px 0;
+  align-items: center;
+}
+.sync-scope-row h3 {
+  margin: 0;
+}
+.account-layout {
+  gap: 44px;
+  padding-top: 25px;
+}
+.account-identity {
+  padding: 23px 0;
+}
+.identity-person h2 {
+  margin: 0 0 8px;
+}
+.account-cloud .cloud-refresh {
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+.disconnected-story h3 {
+  font-size: 20px;
+  margin: 0 0 12px;
+}
+.settings-list section {
+  min-height: 0;
+  padding-top: 18px;
+  padding-bottom: 18px;
+}
+.settings-list section:first-child {
+  padding-top: 18px;
+}
+.settings-list section > h3 {
+  top: 18px;
+}
+.settings-list .path-field {
+  margin-top: 0;
+}
+.settings-list .setting-label:first-of-type {
+  padding-top: 9px;
+}
+.settings-list p:empty {
+  display: none;
+}
+.discover-bottom {
+  justify-content: flex-end;
+  gap: 14px;
+}
+.app-update-notice {
+  margin-bottom: 24px;
+}
+.activity-empty {
+  padding: 40px 20px;
+}
+@media (max-width: 700px) {
+  .page-actions {
+    width: 100%;
+  }
+  .editorial main .page-heading {
+    align-items: flex-start;
+  }
+  .settings-list section > h3 {
+    top: auto;
+  }
+}
+
+.settings-list .setting-label {
+  padding-bottom: 12px;
+}
+.settings-list .update-actions {
+  margin-top: 12px;
+}
+.update-wait {
+  flex-basis: 100%;
+  text-align: right;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* Both notification states use the active app theme. */
+:root {
+  --error: #f18e8e;
+}
+:root[data-theme='light'] {
+  --error: #b42318;
+}
+.editorial .toast,
+.editorial .toast.error {
+  left: 50%;
+  max-width: min(640px, calc(100vw - 40px));
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 13px 16px;
+  font-family: inherit;
+  font-size: 13px;
+  box-shadow: 0 10px 40px #0003;
+}
+.editorial .toast.error {
+  border-left: 3px solid var(--error);
+}
+.editorial .toast.error > svg {
+  color: var(--error);
+}
+.editorial .toast:not(.error) > svg {
+  color: var(--accent);
+}

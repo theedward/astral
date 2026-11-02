@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 export default function DiscoveryPanel({ s, busy, call, notify, AddonIcon, onLibrary }) {
   const [query, setQuery] = useState(''),
-    [submitted, setSubmitted] = useState(''),
     [searching, setSearching] = useState(false),
     [results, setResults] = useState([]),
     [error, setError] = useState(null),
@@ -24,7 +23,6 @@ export default function DiscoveryPanel({ s, busy, call, notify, AddonIcon, onLib
     [preview, setPreview] = useState(null);
   useEffect(() => {
     setResults([]);
-    setSubmitted('');
     setReview(null);
     setPreview(null);
     setError(null);
@@ -32,7 +30,6 @@ export default function DiscoveryPanel({ s, busy, call, notify, AddonIcon, onLib
   const search = async (e) => {
     e.preventDefault();
     setError(null);
-    setSubmitted(query.trim());
     setResults([]);
     if (query.trim().length < 2) {
       setError('Enter at least two characters to search GitHub.');
@@ -83,24 +80,22 @@ export default function DiscoveryPanel({ s, busy, call, notify, AddonIcon, onLib
           <Search size={16} />
           <input
             aria-label="Find addons"
-            placeholder="Find addons on GitHub or in Astral’s catalogue…"
+            placeholder="Search addons…"
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
               if (!e.target.value) {
                 setResults([]);
-                setSubmitted('');
               }
             }}
           />
         </label>
         <button className="button primary" disabled={busy}>
-          {busy ? <LoaderCircle size={15} className="spin" /> : <Search size={15} />} Search GitHub
+          {busy ? <LoaderCircle size={15} className="spin" /> : <Search size={15} />} Search
         </button>
       </form>
       <div className="finder-filters">
         <label>
-          Source{' '}
           <select
             aria-label="Addon source filter"
             value={source}
@@ -111,10 +106,7 @@ export default function DiscoveryPanel({ s, busy, call, notify, AddonIcon, onLib
             <option value="manual">Manual sources</option>
           </select>
         </label>
-        <span>
-          {searching ? 'Searching…' : list.length + ' results'} ·{' '}
-          {s.flavor === 'forever' ? 'Forever' : 'Retail'}
-        </span>
+        <span>{searching ? 'Searching…' : list.length + ' results'}</span>
       </div>
       {error && (
         <div role="alert" className="inline-note warning">
@@ -127,24 +119,14 @@ export default function DiscoveryPanel({ s, busy, call, notify, AddonIcon, onLib
             <AddonIcon addon={a} />
             <h3>{a.name}</h3>
             <p>{a.description}</p>
-            <div className="finder-meta">
-              <span>
-                {a.repo ? (
-                  <>
-                    <ProviderMark name="GitHub" small /> {a.repo}
-                  </>
-                ) : (
-                  'Official download page'
-                )}
-              </span>
-              <span className="compatibility-tag">
-                {a.managed || a.folder
-                  ? 'Package checked at install'
-                  : 'Client support checked on review'}
-              </span>
-            </div>
+            {a.repo && (
+              <div className="finder-meta">
+                <span>
+                  <ProviderMark name="GitHub" small /> {a.repo}
+                </span>
+              </div>
+            )}
             <div className="discover-bottom">
-              <span>{a.repo ? 'GitHub' : 'Manual download'}</span>
               {a.installed ? (
                 <>
                   <button className="text-button" onClick={() => onLibrary(a.name)}>
@@ -166,7 +148,7 @@ export default function DiscoveryPanel({ s, busy, call, notify, AddonIcon, onLib
                   disabled={busy}
                   onClick={() => call('openSource', a.id)}
                 >
-                  Official source <ExternalLink size={13} />
+                  Download page <ExternalLink size={13} />
                 </button>
               )}
             </div>
@@ -177,24 +159,8 @@ export default function DiscoveryPanel({ s, busy, call, notify, AddonIcon, onLib
         <div className="empty">
           <Package size={28} />
           <h3>No matching addons</h3>
-          <p>
-            {submitted
-              ? 'Try another addon name. GitHub results depend on authors publishing and tagging their projects.'
-              : 'Enter a name, then search GitHub for more projects.'}
-          </p>
         </div>
       )}
-      <div className="honest-note">
-        <ShieldCheck size={18} />
-        <div>
-          <strong>Review the source. Check the package.</strong>
-          <p>
-            GitHub search finds community projects. Astral checks a release’s addon folders,
-            dependencies and {s.flavor === 'forever' ? 'Forever' : 'Retail'} build before enabling
-            Install. CurseForge and Wago catalogue access is still pending.
-          </p>
-        </div>
-      </div>
       {review && (
         <div className="modal-backdrop" onClick={() => !busy && setReview(null)}>
           <div
@@ -213,7 +179,6 @@ export default function DiscoveryPanel({ s, busy, call, notify, AddonIcon, onLib
             >
               <X size={18} />
             </button>
-            <div className="eyebrow">GitHub release</div>
             <h2>{review.repo.split('/')[1]}</h2>
             <p>
               {review.repo} · {review.tag}

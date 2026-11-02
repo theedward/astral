@@ -10,7 +10,6 @@ import {
   Check,
   LoaderCircle,
   Monitor,
-  ShieldCheck,
 } from 'lucide-react';
 import CloudPanel from './CloudPanel.jsx';
 export default function AccountPage({ s, busy, call, notify, time, snapshot, connectionError }) {
@@ -22,13 +21,10 @@ export default function AccountPage({ s, busy, call, notify, time, snapshot, con
             {s.signedIn ? s.accountName?.slice(0, 1) || 'A' : <Cloud size={30} />}
           </span>
           <div>
-            <span className="section-kicker">YOUR ACCOUNT</span>
-            <h2>{s.signedIn ? s.accountName : 'Bring your setup along.'}</h2>
+            <h2>{s.signedIn ? s.accountName : 'Battle.net'}</h2>
             <p className="identity-status">
               <i className={'connection-dot ' + (s.signedIn ? 'connected' : '')} />
-              {s.signedIn
-                ? 'Connected with Battle.net'
-                : 'One sign-in. A familiar setup on every computer.'}
+              {s.signedIn ? 'Connected with Battle.net' : 'Not connected'}
             </p>
           </div>
         </div>
@@ -57,7 +53,6 @@ export default function AccountPage({ s, busy, call, notify, time, snapshot, con
                 {busy ? 'Waiting for Battle.net…' : 'Connect Battle.net'}
                 <ArrowUpRight size={16} />
               </button>
-              <p>Sign in through Blizzard’s secure browser flow.</p>
             </>
           )}
         </div>
@@ -74,17 +69,16 @@ export default function AccountPage({ s, busy, call, notify, time, snapshot, con
       )}
       <div className="account-layout">
         <aside className="sync-scope">
-          <span className="section-kicker">WHAT COMES WITH YOU</span>
+          <h3 className="scope-heading">Synced settings</h3>
           {[
-            [SlidersHorizontal, 'Addon profiles', 'Your supported addon settings.'],
-            [Command, 'Keybindings', 'Account and character bindings.'],
-            [Layers, 'Blizzard layouts', 'Your saved interface arrangements.'],
-          ].map(([Icon, title, detail]) => (
+            [SlidersHorizontal, 'Addon profiles'],
+            [Command, 'Keybindings'],
+            [Layers, 'Blizzard layouts'],
+          ].map(([Icon, title]) => (
             <div className="sync-scope-row" key={title}>
               <Icon size={19} />
               <div>
                 <h3>{title}</h3>
-                <p>{detail}</p>
               </div>
             </div>
           ))}
@@ -100,43 +94,21 @@ export default function AccountPage({ s, busy, call, notify, time, snapshot, con
             Check local settings
             <ArrowRight size={14} />
           </button>
+          {s.running && <p className="control-hint">Close WoW to check saved settings.</p>}
           {snapshot && (
             <p className="snapshot-result">
               <Check size={13} />
               {snapshot.files} supported files · {(snapshot.bytes / 1024).toFixed(0)} KB
             </p>
           )}
-          <p className="account-safety">
-            <ShieldCheck size={16} />A local backup is saved before applying cloud settings.
-          </p>
         </aside>
         <div className="account-cloud">
           {s.signedIn ? (
             <CloudPanel s={s} busy={busy} call={call} notify={notify} />
           ) : (
             <section className="disconnected-story">
-              <span className="section-kicker">CONNECTED, WHEN YOU ARE</span>
-              <h2>
-                Your interface.
-                <br />
-                Without starting over.
-              </h2>
-              <p>
-                Sign in on another computer to bring your supported profiles, bindings and layouts
-                with you.
-              </p>
-              <div className="sync-steps">
-                <span>
-                  <b>01</b>Save your setup
-                </span>
-                <span>
-                  <b>02</b>Sign in on your other computer
-                </span>
-                <span>
-                  <b>03</b>Choose the setup to restore
-                </span>
-              </div>
-              <p className="muted">Your addons work locally without an account.</p>
+              <h3>Cloud backups</h3>
+              <p>Sign in to save your settings and restore them on another computer.</p>
             </section>
           )}
         </div>
