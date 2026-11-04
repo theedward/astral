@@ -6,6 +6,7 @@ const actions = [
   'installAppUpdate',
   'appUpdateChecks',
   'cloudInfo',
+  'setSyncProfile',
   'revokeDevice',
   'restoreCloud',
   'deleteCloud',

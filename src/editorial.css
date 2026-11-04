@@ -1898,3 +1898,20 @@ input[type='checkbox'] {
 .editorial .toast {
   z-index: 1000;
 }
+
+.sync-profile-picker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+  font-weight: 650;
+}
+.sync-profile-picker select {
+  min-height: 34px;
+  padding: 0 9px;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}

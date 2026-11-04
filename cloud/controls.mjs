@@ -199,7 +199,7 @@ export async function saveSnapshot(env, who, flavor, b, random) {
 }
 export async function controls(request, env, who, body, random) {
   const path = new URL(request.url).pathname;
-  const cloud = path.match(/^\/cloud\/(retail|forever)$/);
+  const cloud = path.match(/^\/cloud\/((?:retail|forever)(?:-handheld)?)$/);
   if (cloud && request.method === 'GET') {
     const flavor = cloud[1];
     const devices = await q(
@@ -239,7 +239,7 @@ export async function controls(request, env, who, body, random) {
     return json({ revoked: true, current: device[1] === who.id });
   }
   const history = path.match(
-    /^\/profiles\/(retail|forever)\/history\/([A-Za-z0-9_-]{43})(\/restore)?$/,
+    /^\/profiles\/((?:retail|forever)(?:-handheld)?)\/history\/([A-Za-z0-9_-]{43})(\/restore)?$/,
   );
   if (history) {
     const [_, flavor, id, restore] = history;

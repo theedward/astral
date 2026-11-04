@@ -128,7 +128,7 @@ function App() {
       const r = await api[name](...args);
       if (r?.addons) setS(r);
       if (name === 'snapshot') setSnapshot(r);
-      if (name === 'sync' && r?.conflict) setDialog('conflict');
+      if (name === 'sync' && r?.conflict) setDialog(r);
       return r;
     } catch (e) {
       const message = e.message.replace(/^Error invoking remote method '[^']+': Error: /, '');
@@ -156,10 +156,10 @@ function App() {
         if (p.kind === 'sync-paused') notify(p.message, true);
         if (p.kind === 'sync-ready')
           api
-            .sync()
+            .sync('auto')
             .then((r) => {
               if (r.conflict) {
-                setDialog('conflict');
+                setDialog(r);
                 notify('Both setups changed. Choose which one to keep.', true);
               } else setS(r);
             })
@@ -1031,20 +1031,21 @@ function App() {
                   </button>
                 ))}
               </>
-            ) : dialog === 'conflict' ? (
+            ) : dialog?.conflict ? (
               <>
                 <Layers size={26} />
                 <h2>Choose which setup to keep</h2>
                 <p>
-                  This computer and your cloud setup have both changed. A backup will be saved
-                  before applying a version.
+                  Choose what to sync with{' '}
+                  {dialog.scope.endsWith('-handheld') ? 'Handheld' : 'Regular'}. Astral saves a
+                  local backup before applying cloud settings.
                 </p>
                 <div className="modal-actions">
                   <button
                     className="button secondary"
                     onClick={async () => {
                       setDialog(null);
-                      await call('sync', 'cloud');
+                      await call('sync', 'cloud', dialog.scope, dialog.revision);
                     }}
                   >
                     Use cloud setup
@@ -1053,7 +1054,7 @@ function App() {
                     className="button primary"
                     onClick={async () => {
                       setDialog(null);
-                      await call('sync', 'local');
+                      await call('sync', 'local', dialog.scope, dialog.revision);
                     }}
                   >
                     Use this computer

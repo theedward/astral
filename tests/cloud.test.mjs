@@ -406,3 +406,32 @@ test('Cloudflare free-tier failures pause sync without suggesting a billing upgr
   assert.equal(response.status, 507);
   assert.equal((await response.json()).code, 'quota');
 });
+
+test('handheld backups and history are separate from legacy regular backups', async (t) => {
+  const env = await fixture(t);
+  const token = await login(env);
+  const send = (path, method = 'GET', data = null) =>
+    worker.fetch(req(path, method, data, token), env);
+  assert.equal((await send('/profiles/current', 'PUT', snapshot(0))).status, 200);
+  for (const client of ['retail', 'forever']) {
+    const handheld = client + '-handheld';
+    const hash = (client === 'retail' ? 'b' : 'c').repeat(64);
+    assert.equal(
+      (await send('/profiles/' + handheld + '/current', 'PUT', { ...snapshot(0), hash })).status,
+      200,
+    );
+    const info = await (await send('/cloud/' + handheld)).json();
+    assert.equal(info.history[0].hash, hash);
+    const id = info.history[0].id;
+    assert.equal((await send('/profiles/' + client + '/history/' + id)).status, 404);
+    assert.equal((await send('/profiles/' + handheld + '/history/' + id)).status, 200);
+    assert.equal(
+      (await send('/profiles/' + handheld + '/history/' + id + '/restore', 'POST', { revision: 1 }))
+        .status,
+      200,
+    );
+  }
+  assert.equal((await (await send('/profiles/retail/current')).json()).hash, 'a'.repeat(64));
+  assert.equal((await (await send('/profiles/forever/current')).json()).revision, 0);
+  assert.equal((await send('/profiles/retail-custom/current', 'PUT', snapshot(0))).status, 404);
+});

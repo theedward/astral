@@ -127,7 +127,7 @@ export async function route(request, env) {
         'Cache-Control': 'public,max-age=86400',
       },
     });
-  const profileMatch = p.match(/^\/profiles\/(retail|forever)\/current$/);
+  const profileMatch = p.match(/^\/profiles\/((?:retail|forever)(?:-handheld)?)\/current$/);
   const flavor = profileMatch?.[1] || 'retail';
   if (p === '/health')
     return json({

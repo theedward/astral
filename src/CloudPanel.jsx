@@ -45,7 +45,7 @@ export default function CloudPanel({ s, call, busy, notify }) {
     return () => {
       active = false;
     };
-  }, [s.signedIn, s.flavor, s.syncRevision]);
+  }, [s.signedIn, s.flavor, s.syncProfile, s.syncRevision]);
   const modalRef = useDialog(!!confirm, () => !busy && setConfirm(null));
   if (!s.signedIn) return null;
   const action = async () => {
@@ -114,7 +114,8 @@ export default function CloudPanel({ s, call, busy, notify }) {
             </section>
             <section>
               <h4>
-                <History size={15} /> {s.flavor === 'forever' ? 'Forever' : 'Retail'} backups (
+                <History size={15} /> {s.flavor === 'forever' ? 'Forever' : 'Retail'} ·{' '}
+                {s.syncProfile === 'handheld' ? 'Handheld' : 'Regular'} backups (
                 {info.history.length})
               </h4>
               <div className="control-list">

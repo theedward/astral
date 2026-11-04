@@ -3,7 +3,15 @@ const path = require('node:path');
 const { flavor } = require('./flavors.cjs');
 const context = (config) =>
   Object.fromEntries(
-    ['root', 'account', 'lastHash', 'lastSync', 'syncRevision'].map((key) => [key, config[key]]),
+    [
+      'root',
+      'account',
+      'lastHash',
+      'lastSync',
+      'syncRevision',
+      'syncProfile',
+      'syncProfilePending',
+    ].map((key) => [key, config[key]]),
   );
 // Plan first; a bad or cancelled selection must not alter the active setup.
 async function select(
@@ -34,6 +42,8 @@ async function select(
     lastHash: null,
     lastSync: null,
     syncRevision: 0,
+    syncProfile: undefined,
+    syncProfilePending: undefined,
     ...(selected?.root && path.resolve(selected.root) === target ? selected : {}),
     spaces,
   };

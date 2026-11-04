@@ -43,6 +43,8 @@ const mutations = new Set([
   'importZip',
   'restore',
   'sync',
+  'setSyncProfile',
+  'setAccount',
   'restoreCloud',
   'deleteCloud',
   'installProject',
@@ -103,7 +105,15 @@ async function request(route, { method = 'GET', body, token = true } = {}) {
   }
   return result;
 }
+function syncProfile() {
+  return config.syncProfile === 'handheld' ? 'handheld' : 'regular';
+}
+function syncScope() {
+  const client = flavors.flavor(config.root);
+  return syncProfile() === 'handheld' ? client + '-handheld' : client;
+}
 async function signalSyncReady(message) {
+  if (config.syncProfilePending) return;
   try {
     await credentials.available();
     send({ kind: 'sync-ready', message });
@@ -179,6 +189,8 @@ async function state() {
     lastError,
     lastSync: config.lastSync || null,
     syncRevision: config.syncRevision || 0,
+    syncProfile: syncProfile(),
+    syncProfilePending: !!config.syncProfilePending,
     providers: [
       {
         name: 'GitHub',
@@ -375,7 +387,19 @@ async function main() {
     if (!projects.validRepo(repo)) throw Error('Invalid GitHub project.');
     return shell.openExternal('https://github.com/' + repo + '/releases');
   });
-  handle('cloudInfo', async () => request('/cloud/' + flavors.flavor(config.root)));
+  handle('cloudInfo', async () => request('/cloud/' + syncScope()));
+  handle('setSyncProfile', async (value) => {
+    if (!['regular', 'handheld'].includes(value)) throw Error('Unknown sync profile.');
+    if (value === syncProfile()) return state();
+    if (await engine.gameRunning()) throw Error('Close WoW before switching sync profiles.');
+    config.syncProfile = value;
+    config.syncProfilePending = true;
+    config.lastHash = null;
+    config.lastSync = null;
+    config.syncRevision = 0;
+    await persist();
+    return state();
+  });
   handle('revokeDevice', async (id) => {
     if (typeof id !== 'string' || !id.match(/^[A-Za-z0-9_-]{32,64}$/))
       throw Error('Invalid device.');
@@ -393,7 +417,7 @@ async function main() {
       throw Error('Invalid cloud backup.');
     const root = config.root,
       account = config.account,
-      type = flavors.flavor(root);
+      type = syncScope();
     const old = await request('/profiles/' + type + '/history/' + id);
     const verified = settings.inspect(old.payload);
     if (old.hash && old.hash !== verified.hash)
@@ -404,6 +428,7 @@ async function main() {
       body: { revision, hash: verified.hash },
     });
     await settings.apply(root, account, old.payload, data, engine.gameRunning);
+    config.syncProfilePending = false;
     config.lastHash = verified.hash;
     config.syncRevision = result.revision;
     config.lastSync = new Date().toISOString();
@@ -629,7 +654,7 @@ async function main() {
           token: await credentials.encrypt(result.token),
           name: result.name,
         });
-        if (config.account && !(await engine.gameRunning()))
+        if (!config.syncProfilePending && config.account && !(await engine.gameRunning()))
           setTimeout(
             () =>
               send({ kind: 'sync-ready', message: 'Battle.net connected. Preparing your setup.' }),
@@ -640,19 +665,36 @@ async function main() {
     }
     throw Error('Sign-in expired. Try connecting again.');
   });
-  handle('sync', async (choice) => {
+  handle('sync', async (choice, expectedScope, expectedRevision) => {
+    const scope = syncScope();
+    if (expectedScope && expectedScope !== scope)
+      throw Error('The sync profile changed. Try again.');
+    if (choice === 'auto' && config.syncProfilePending) return state();
     if (await engine.gameRunning()) throw Error('Settings sync waits until WoW is closed.');
     const local = await settings.capture(config.root, config.account);
-    const remote = await request('/profiles/' + flavors.flavor(config.root) + '/current');
+    const remote = await request('/profiles/' + scope + '/current');
+    if (expectedRevision !== undefined && expectedRevision !== remote.revision)
+      throw Error('The cloud backup changed. Sync again to review it.');
+    if (choice === 'cloud' && !remote.revision) throw Error('No cloud backup is available.');
+    if (!local.files && !remote.revision)
+      throw Error('Log into WoW, then close it to save settings first.');
     const action = flavors.syncAction(local, remote, config.lastHash, choice);
     if (action === 'conflict')
-      return { conflict: true, localFiles: local.files, remoteTime: remote.updated };
+      return {
+        conflict: true,
+        scope,
+        revision: remote.revision,
+        localFiles: local.files,
+        remoteTime: remote.updated,
+      };
     if (action === 'download') {
+      if (remote.hash && settings.inspect(remote.payload).hash !== remote.hash)
+        throw Error('The cloud backup checksum does not match.');
       await settings.apply(config.root, config.account, remote.payload, data, engine.gameRunning);
       config.lastHash = remote.hash;
       config.syncRevision = remote.revision;
     } else if (action === 'upload') {
-      const r = await request('/profiles/' + flavors.flavor(config.root) + '/current', {
+      const r = await request('/profiles/' + scope + '/current', {
         method: 'PUT',
         body: {
           payload: local.payload,
@@ -668,6 +710,7 @@ async function main() {
       config.syncRevision = remote.revision;
       config.lastHash = local.hash;
     }
+    config.syncProfilePending = false;
     config.lastSync = new Date().toISOString();
     await persist();
     return state();
