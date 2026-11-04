@@ -44,6 +44,9 @@ const mutations = new Set([
   'restore',
   'sync',
   'setSyncProfile',
+  'createSyncProfile',
+  'renameSyncProfile',
+  'deleteSyncProfile',
   'setAccount',
   'restoreCloud',
   'deleteCloud',
@@ -105,12 +108,15 @@ async function request(route, { method = 'GET', body, token = true } = {}) {
   }
   return result;
 }
+function validSyncProfile(value) {
+  return typeof value === 'string' && /^(regular|handheld|[a-f0-9]{32})$/.test(value);
+}
 function syncProfile() {
-  return config.syncProfile === 'handheld' ? 'handheld' : 'regular';
+  return validSyncProfile(config.syncProfile) ? config.syncProfile : 'regular';
 }
 function syncScope() {
   const client = flavors.flavor(config.root);
-  return syncProfile() === 'handheld' ? client + '-handheld' : client;
+  return syncProfile() === 'regular' ? client : client + '-' + syncProfile();
 }
 async function signalSyncReady(message) {
   if (config.syncProfilePending) return;
@@ -340,9 +346,7 @@ async function main() {
       }
       app.quit();
     } else if (process.platform === 'win32') {
-      await appUpdates.validateDownload();
-      const error = await shell.openPath(appUpdates.downloaded);
-      if (error) throw Error(error);
+      await appUpdates.launchWindows(engine.gameRunning);
       app.quit();
     } else throw Error('App installation is supported on macOS and Windows.');
   });
@@ -388,10 +392,29 @@ async function main() {
     return shell.openExternal('https://github.com/' + repo + '/releases');
   });
   handle('cloudInfo', async () => request('/cloud/' + syncScope()));
+  const syncProfilesPath = () => '/sync-profiles/' + flavors.flavor(config.root);
+  handle('syncProfiles', () => request(syncProfilesPath()));
+  handle('createSyncProfile', (name) =>
+    request(syncProfilesPath(), { method: 'POST', body: { name } }),
+  );
+  handle('renameSyncProfile', (id, name) => {
+    if (!validSyncProfile(id)) throw Error('Unknown sync profile.');
+    return request(syncProfilesPath() + '/' + id, { method: 'PATCH', body: { name } });
+  });
+  handle('deleteSyncProfile', (id) => {
+    if (typeof id !== 'string' || !/^[a-f0-9]{32}$/.test(id))
+      throw Error('Unknown custom profile.');
+    if (id === syncProfile()) throw Error('Switch to another profile before deleting this one.');
+    return request(syncProfilesPath() + '/' + id, { method: 'DELETE', body: { confirm: id } });
+  });
   handle('setSyncProfile', async (value) => {
-    if (!['regular', 'handheld'].includes(value)) throw Error('Unknown sync profile.');
+    if (!validSyncProfile(value)) throw Error('Unknown sync profile.');
     if (value === syncProfile()) return state();
     if (await engine.gameRunning()) throw Error('Close WoW before switching sync profiles.');
+    if (!['regular', 'handheld'].includes(value)) {
+      const { profiles } = await request(syncProfilesPath());
+      if (!profiles.some((p) => p.id === value)) throw Error('Unknown sync profile.');
+    }
     config.syncProfile = value;
     config.syncProfilePending = true;
     config.lastHash = null;
@@ -443,6 +466,8 @@ async function main() {
     config.lastSync = null;
     config.syncRevision = 0;
     config.spaces = {};
+    config.syncProfile = 'regular';
+    config.syncProfilePending = true;
     await persist();
     return state();
   });

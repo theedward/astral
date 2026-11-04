@@ -1915,3 +1915,21 @@ input[type='checkbox'] {
   border: 1px solid var(--line);
   border-radius: 4px;
 }
+
+.profile-manager-button {
+  margin: -8px 0 18px;
+}
+.sync-profile-list {
+  max-height: 42vh;
+  overflow: auto;
+  margin: 16px 0;
+}
+.sync-profile-list .control-row strong {
+  overflow-wrap: anywhere;
+}
+.sync-profile-list .modal-actions {
+  margin: 0;
+}
+.sync-profile-picker input {
+  min-width: 0;
+}

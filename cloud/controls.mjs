@@ -94,9 +94,10 @@ export async function saveSnapshot(env, who, flavor, b, random) {
   const statements = [
     q(
       env,
-      'INSERT INTO profiles(user_id,flavor,revision) VALUES(?,?,0) ON CONFLICT(user_id,flavor) DO NOTHING',
+      'INSERT INTO profiles(user_id,flavor,revision) SELECT ?,?,0 WHERE ? ON CONFLICT(user_id,flavor) DO NOTHING',
       who.user_id,
       flavor,
+      /-[a-f0-9]{32}$/.test(flavor) ? 0 : 1,
     ),
     q(
       env,
@@ -166,7 +167,9 @@ export async function saveSnapshot(env, who, flavor, b, random) {
       who.user_id,
       flavor,
     ).first();
-    if (current?.revision !== b.revision)
+    if (!current)
+      return json({ error: 'This sync profile was deleted. Choose another profile.' }, 404);
+    if (current.revision !== b.revision)
       return json({ error: 'The cloud setup changed. Review both versions before syncing.' }, 409);
     return json(
       {
@@ -197,9 +200,104 @@ export async function saveSnapshot(env, who, flavor, b, random) {
   ]);
   return json({ revision, updated });
 }
+async function manageProfiles(request, env, who, body, client, id) {
+  const method = request.method;
+  const scope = id === 'regular' ? client : client + '-' + id;
+  if (!id && method === 'GET') {
+    const rows = await q(
+      env,
+      'SELECT flavor,name,revision FROM profiles WHERE user_id=? AND (flavor=? OR flavor LIKE ?) ORDER BY name,flavor',
+      who.user_id,
+      client,
+      client + '-%',
+    ).all();
+    const entries = new Map(
+      rows.results.map(({ flavor, name, revision }) => [
+        flavor === client ? 'regular' : flavor.slice(client.length + 1),
+        { name, revision },
+      ]),
+    );
+    const result = [
+      ['regular', 'Regular'],
+      ['handheld', 'Handheld'],
+    ].map(([key, label]) => ({
+      id: key,
+      name: entries.get(key)?.name || label,
+      revision: entries.get(key)?.revision || 0,
+    }));
+    for (const [key, entry] of entries)
+      if (/^[a-f0-9]{32}$/.test(key)) result.push({ id: key, ...entry });
+    return json({ profiles: result });
+  }
+
+  if (id && method === 'DELETE') {
+    if (!/^[a-f0-9]{32}$/.test(id))
+      return json({ error: 'Regular and Handheld are built-in profiles.' }, 400);
+    const confirmation = await body(request);
+    if (confirmation.confirm !== id) return json({ error: 'Confirm profile deletion first.' }, 400);
+    const [, , deleted] = await env.DB.batch([
+      q(
+        env,
+        'DELETE FROM chunks WHERE snapshot_id IN (SELECT id FROM snapshots WHERE user_id=? AND flavor=?)',
+        who.user_id,
+        scope,
+      ),
+      q(env, 'DELETE FROM snapshots WHERE user_id=? AND flavor=?', who.user_id, scope),
+      q(env, 'DELETE FROM profiles WHERE user_id=? AND flavor=?', who.user_id, scope),
+    ]);
+    return deleted.meta.changes
+      ? json({ deleted: true })
+      : json({ error: 'Profile not found.' }, 404);
+  }
+
+  if ((!id && method === 'POST') || (id && method === 'PATCH')) {
+    const b = await body(request);
+    const name = typeof b.name === 'string' ? b.name.trim() : '';
+    if (!name || name.length > 40 || /[\u0000-\u001f\u007f]/.test(name))
+      return json({ error: 'Enter a profile name between 1 and 40 characters.' }, 400);
+    if (!id) {
+      const key = crypto.randomUUID().replaceAll('-', '');
+      const result = await q(
+        env,
+        'INSERT INTO profiles(user_id,flavor,revision,name) SELECT ?,?,0,? WHERE (SELECT COUNT(*) FROM profiles WHERE user_id=? AND flavor LIKE ? AND flavor<>?)<6',
+        who.user_id,
+        client + '-' + key,
+        name,
+        who.user_id,
+        client + '-%',
+        client + '-handheld',
+      ).run();
+      return result.meta.changes
+        ? json({ id: key, name, revision: 0 }, 201)
+        : json({ error: 'You can add up to six custom profiles per game client.' }, 400);
+    }
+    const result =
+      id === 'regular' || id === 'handheld'
+        ? await q(
+            env,
+            'INSERT INTO profiles(user_id,flavor,revision,name) VALUES(?,?,0,?) ON CONFLICT(user_id,flavor) DO UPDATE SET name=excluded.name',
+            who.user_id,
+            scope,
+            name,
+          ).run()
+        : await q(
+            env,
+            'UPDATE profiles SET name=? WHERE user_id=? AND flavor=?',
+            name,
+            who.user_id,
+            scope,
+          ).run();
+    return result.meta.changes ? json({ id, name }) : json({ error: 'Profile not found.' }, 404);
+  }
+  return null;
+}
 export async function controls(request, env, who, body, random) {
   const path = new URL(request.url).pathname;
-  const cloud = path.match(/^\/cloud\/((?:retail|forever)(?:-handheld)?)$/);
+  const manager = path.match(
+    /^\/sync-profiles\/(retail|forever)(?:\/(regular|handheld|[a-f0-9]{32}))?$/,
+  );
+  if (manager) return manageProfiles(request, env, who, body, manager[1], manager[2]);
+  const cloud = path.match(/^\/cloud\/((?:retail|forever)(?:-handheld|-[a-f0-9]{32})?)$/);
   if (cloud && request.method === 'GET') {
     const flavor = cloud[1];
     const devices = await q(
@@ -214,6 +312,8 @@ export async function controls(request, env, who, body, random) {
       who.user_id,
       flavor,
     ).first();
+    if (!profile && /-[a-f0-9]{32}$/.test(flavor))
+      return json({ error: 'This sync profile was deleted. Choose another profile.' }, 404);
     const history = await q(
       env,
       'SELECT id,revision,created,hash,bytes,files,device_label FROM snapshots WHERE user_id=? AND flavor=? ORDER BY revision DESC LIMIT 5',
@@ -239,7 +339,7 @@ export async function controls(request, env, who, body, random) {
     return json({ revoked: true, current: device[1] === who.id });
   }
   const history = path.match(
-    /^\/profiles\/((?:retail|forever)(?:-handheld)?)\/history\/([A-Za-z0-9_-]{43})(\/restore)?$/,
+    /^\/profiles\/((?:retail|forever)(?:-handheld|-[a-f0-9]{32})?)\/history\/([A-Za-z0-9_-]{43})(\/restore)?$/,
   );
   if (history) {
     const [_, flavor, id, restore] = history;

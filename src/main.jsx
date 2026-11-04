@@ -888,7 +888,7 @@ function App() {
                       disabled={busy || s.running}
                       onClick={() => call('installAppUpdate')}
                     >
-                      {s.platform === 'darwin' ? 'Update & restart' : 'Open update installer'}
+                      Update &amp; restart
                     </button>
                   )}
                 </div>
@@ -1036,9 +1036,8 @@ function App() {
                 <Layers size={26} />
                 <h2>Choose which setup to keep</h2>
                 <p>
-                  Choose what to sync with{' '}
-                  {dialog.scope.endsWith('-handheld') ? 'Handheld' : 'Regular'}. Astral saves a
-                  local backup before applying cloud settings.
+                  Choose what to sync with the selected profile. Astral saves a local backup before
+                  applying cloud settings.
                 </p>
                 <div className="modal-actions">
                   <button

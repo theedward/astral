@@ -12,6 +12,7 @@ import {
   Monitor,
 } from 'lucide-react';
 import CloudPanel from './CloudPanel.jsx';
+import SyncProfiles from './SyncProfiles.jsx';
 export default function AccountPage({ s, busy, call, notify, time, snapshot, connectionError }) {
   return (
     <div className="account-view">
@@ -69,17 +70,7 @@ export default function AccountPage({ s, busy, call, notify, time, snapshot, con
       )}
       <div className="account-layout">
         <aside className="sync-scope">
-          <label className="sync-profile-picker">
-            Sync profile
-            <select
-              value={s.syncProfile || 'regular'}
-              disabled={busy || s.running}
-              onChange={(event) => call('setSyncProfile', event.target.value)}
-            >
-              <option value="regular">Regular</option>
-              <option value="handheld">Handheld</option>
-            </select>
-          </label>
+          <SyncProfiles key={s.flavor} s={s} busy={busy} call={call} />
           {s.syncProfilePending && (
             <p className="control-hint">
               {s.signedIn

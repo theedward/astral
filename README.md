@@ -20,7 +20,7 @@ Cloud infrastructure is live:
 - Dedicated Cloudflare Workers + D1 sync service with Battle.net browser login, per-device sessions, version conflicts and five retained snapshots per game client. New desktop installs use the deployed Astral service by default; custom service addresses are preserved.
 - Cloud controls list computers, revoke sessions, restore retained versions and delete all account data with confirmation. Cloud restores back up local settings before applying.
 - Free-tier guard: 10 MiB of settings payloads per user, 50 MiB service-wide, 60 uploads per user/day, 200 service uploads/day and 20,000 API requests/day. Uploads stop at limits; Astral never enables paid billing. These are application limits, not a Cloudflare account billing cap.
-- Settings sync waits for WoW to exit, including the first upload after sign-in. Second-device restoration still needs live verification.
+- Choose a sync profile per computer and game client. Manage profiles lets you rename Regular and Handheld and add or delete custom profiles. After switching, select Sync now to link the local setup to that profile. Settings sync waits for WoW to exit.
 
 Wago and CurseForge are not connected. Their public publishing APIs/approval processes do not establish permission to ship a consumer catalogue integration. See [source research](docs/sources.md).
 
@@ -74,7 +74,7 @@ Astral checks the public GitHub stable release once per day while the desktop ap
 
 Each release includes an Ed25519-signed manifest. The verification key is pinned in the application; the manifest fixes the version, platform, URL, byte count and SHA-256 hash. Interrupted or altered downloads are rejected and checked again immediately before installation. macOS archives are checked for traversal and escaping symlinks, extracted alongside the installed app, and validated for bundle identity, version and code-signature integrity. The installer retains the old app until the replacement acknowledges startup; a failed launch restores the old app. Failed bundles and installer logs are retained for diagnosis.
 
-On macOS use a writable Applications folder, such as `~/Applications/Astral.app`. Read-only disk images and protected installation locations need a normal manual installation first. Windows opens the verified NSIS installer and quits the old process; the installer provides the normal operating-system installation flow. Windows installation requires live verification on Windows.
+On macOS use a writable Applications folder, such as `~/Applications/Astral.app`. Read-only disk images and protected installation locations need a normal manual installation first. On Windows, Update & restart runs the verified installer quietly and reopens Astral. The version already installed controls the update flow, so an update from 0.6.0 still opens its installer window.
 
 GitHub Actions builds both platforms and prepares a draft release only when both builds and tests succeed. The release is signed locally before publication. Public GitHub-hosted builds and Releases are the $0 hosting route. Keep the private Ed25519 key matching `desktop/update-public-key.pem` on the release maintainer’s computer; it is not uploaded to GitHub. Increment package.json and its lockfile, push a `vX.Y.Z` tag, then sign and publish the prepared draft locally. Never commit the private key. See [release procedure](docs/releases.md).
 

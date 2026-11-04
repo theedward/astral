@@ -127,7 +127,9 @@ export async function route(request, env) {
         'Cache-Control': 'public,max-age=86400',
       },
     });
-  const profileMatch = p.match(/^\/profiles\/((?:retail|forever)(?:-handheld)?)\/current$/);
+  const profileMatch = p.match(
+    /^\/profiles\/((?:retail|forever)(?:-handheld|-[a-f0-9]{32})?)\/current$/,
+  );
   const flavor = profileMatch?.[1] || 'retail';
   if (p === '/health')
     return json({
@@ -314,6 +316,8 @@ export async function route(request, env) {
       who.user_id,
       flavor,
     ).first();
+    if (!profile && /-[a-f0-9]{32}$/.test(flavor))
+      return json({ error: 'This sync profile was deleted. Choose another profile.' }, 404);
     if (!profile?.snapshot_id) return json({ revision: 0 });
     const result = await query(
       env,

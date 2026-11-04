@@ -269,6 +269,23 @@ class AppUpdates {
     if (size !== this.release.asset.size || hash.digest('hex') !== this.release.asset.sha256)
       throw Error('The staged update has changed. Download it again.');
   }
+  async launchWindows(gameRunning) {
+    await this.validateDownload();
+    if (await gameRunning()) throw Error('Close WoW before restarting Astral to update.');
+    // NSIS reuses the existing installation and starts Astral after a successful update.
+    const child = spawn(this.downloaded, ['/S', '--updated', '--force-run'], {
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: true,
+    });
+    await new Promise((resolve, reject) => {
+      child.once('error', reject);
+      child.once('spawn', () => {
+        child.unref();
+        resolve();
+      });
+    });
+  }
   async prepareMac(target) {
     await this.validateDownload();
     await inspectZip(this.downloaded);

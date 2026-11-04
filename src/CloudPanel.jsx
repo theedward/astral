@@ -114,8 +114,7 @@ export default function CloudPanel({ s, call, busy, notify }) {
             </section>
             <section>
               <h4>
-                <History size={15} /> {s.flavor === 'forever' ? 'Forever' : 'Retail'} ·{' '}
-                {s.syncProfile === 'handheld' ? 'Handheld' : 'Regular'} backups (
+                <History size={15} /> {s.flavor === 'forever' ? 'Forever' : 'Retail'} backups (
                 {info.history.length})
               </h4>
               <div className="control-list">

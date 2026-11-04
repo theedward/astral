@@ -52,6 +52,12 @@ async function fixture(t) {
       'utf8',
     ),
   );
+  DBi.db.exec(
+    await fs.readFile(
+      new URL('../cloud/migrations/0003_profile_names.sql', import.meta.url),
+      'utf8',
+    ),
+  );
   t.after(() => DBi.db.close());
   return {
     DB: DBi,
@@ -434,4 +440,40 @@ test('handheld backups and history are separate from legacy regular backups', as
   assert.equal((await (await send('/profiles/retail/current')).json()).hash, 'a'.repeat(64));
   assert.equal((await (await send('/profiles/forever/current')).json()).revision, 0);
   assert.equal((await send('/profiles/retail-custom/current', 'PUT', snapshot(0))).status, 404);
+});
+
+test('custom profiles keep stable backups on rename and cannot be recreated by stale devices', async (t) => {
+  const env = await fixture(t);
+  const owner = await login(env);
+  const other = await login(env, 'user-b');
+  const send = (path, method = 'GET', data = null, token = owner) =>
+    worker.fetch(req(path, method, data, token), env);
+  const retail = '/sync-profiles/retail';
+  await send('/profiles/retail-handheld/current', 'PUT', snapshot(0));
+  const created = await send(retail, 'POST', { name: 'Travel' });
+  assert.equal(created.status, 201);
+  const { id } = await created.json();
+  const slot = '/profiles/retail-' + id + '/current';
+  assert.equal((await send(slot, 'PUT', snapshot(0))).status, 200);
+  assert.equal(
+    (await send(retail + '/' + id, 'PATCH', { name: 'Travel renamed' }, other)).status,
+    404,
+  );
+  assert.equal((await send(retail + '/' + id, 'PATCH', { name: 'Travel renamed' })).status, 200);
+  assert.equal((await send(retail + '/handheld', 'PATCH', { name: 'Ally' })).status, 200);
+  const { profiles } = await (await send(retail)).json();
+  assert.deepEqual(
+    profiles.find((p) => p.id === id),
+    { id, name: 'Travel renamed', revision: 1 },
+  );
+  assert.deepEqual(
+    profiles.find((p) => p.id === 'handheld'),
+    { id: 'handheld', name: 'Ally', revision: 1 },
+  );
+  assert.equal((await (await send('/sync-profiles/forever')).json()).profiles.length, 2);
+  assert.equal((await send(slot, 'GET', null, other)).status, 404);
+  assert.equal((await send(retail + '/' + id, 'DELETE', { confirm: id }, other)).status, 404);
+  assert.equal((await send(retail + '/' + id, 'DELETE', { confirm: id })).status, 200);
+  assert.equal((await send(slot, 'PUT', snapshot(0))).status, 404);
+  assert.equal((await (await send('/profiles/retail-handheld/current')).json()).revision, 1);
 });
