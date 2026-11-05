@@ -129,7 +129,7 @@ export default function CloudPanel({ s, call, busy, notify }) {
                         </p>
                         <p>
                           {h.device_label || 'Earlier backup'}
-                          {h.files !== null && h.files !== undefined ? ` · ${h.files} files` : ''}
+                          {h.files !== null && h.files !== undefined ? ` · ${h.files} items` : ''}
                         </p>
                       </div>
                       <button

@@ -50,4 +50,19 @@ async function select(
   next.spaces[selectedType] = context(next);
   return next;
 }
-module.exports = { select };
+function resetSync(config) {
+  const reset = (value) => ({
+    ...value,
+    lastHash: null,
+    lastSync: null,
+    syncRevision: 0,
+    syncProfilePending: true,
+  });
+  return {
+    ...reset(config),
+    spaces: Object.fromEntries(
+      Object.entries(config.spaces || {}).map(([id, value]) => [id, reset(value)]),
+    ),
+  };
+}
+module.exports = { select, resetSync };

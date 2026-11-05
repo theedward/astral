@@ -14,6 +14,7 @@ import {
 import CloudPanel from './CloudPanel.jsx';
 import SyncProfiles from './SyncProfiles.jsx';
 import SharedLibrary from './SharedLibrary.jsx';
+import AddonChoices from './AddonChoices.jsx';
 export default function AccountPage({ s, busy, call, notify, time, snapshot, connectionError }) {
   return (
     <div className="account-view">
@@ -75,11 +76,11 @@ export default function AccountPage({ s, busy, call, notify, time, snapshot, con
           {s.syncProfilePending && (
             <p className="control-hint">
               {s.signedIn
-                ? 'Select Sync now to use this profile.'
-                : 'Connect Battle.net to use this profile.'}
+                ? 'Local profile applied. Select Sync now to review cloud settings.'
+                : 'Local profile applied. Connect Battle.net to sync it.'}
             </p>
           )}
-          <h3 className="scope-heading">Synced settings</h3>
+          <h3 className="scope-heading">Profile settings</h3>
           {[
             [SlidersHorizontal, 'Addon profiles'],
             [Command, 'Keybindings'],
@@ -108,11 +109,12 @@ export default function AccountPage({ s, busy, call, notify, time, snapshot, con
           {snapshot && (
             <p className="snapshot-result">
               <Check size={13} />
-              {snapshot.files} supported files · {(snapshot.bytes / 1024).toFixed(0)} KB
+              {snapshot.files} settings items · {(snapshot.bytes / 1024).toFixed(0)} KB
             </p>
           )}
         </aside>
         <div className="account-cloud">
+          <AddonChoices s={s} busy={busy} call={call} notify={notify} />
           {s.signedIn ? (
             <>
               <SharedLibrary

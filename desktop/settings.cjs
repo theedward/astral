@@ -3,7 +3,8 @@ const fs = require('node:fs/promises'),
   crypto = require('node:crypto'),
   zlib = require('node:zlib');
 const { exists, save, catalog } = require('./engine.cjs');
-const names = new Set(catalog.map((a) => a.folder));
+const selections = require('./addon-selection.cjs');
+const names = new Set(catalog.flatMap((a) => a.folders || [a.folder]));
 const layoutNames = new Set([
   'bindings-cache.wtf',
   'layout-local.txt',
@@ -66,11 +67,12 @@ async function capture(root, account) {
   }
   await walk(base);
   files.sort((a, b) => a.path.localeCompare(b.path));
-  const payload = JSON.stringify({ schema: 1, files });
+  const addonSelection = await selections.capture(root, base);
+  const payload = JSON.stringify({ schema: 2, files, addonSelection });
   const raw = Buffer.from(payload);
   if (raw.length > 24 * 1024 ** 2) throw Error('This setup exceeds the 24 MB preview limit.');
   return {
-    files: files.length,
+    files: files.length + 1,
     bytes: raw.length,
     hash: crypto.createHash('sha256').update(raw).digest('hex'),
     payload: zlib.gzipSync(raw).toString('base64'),
@@ -79,8 +81,10 @@ async function capture(root, account) {
 function decode(payload) {
   const raw = zlib.gunzipSync(Buffer.from(payload, 'base64'), { maxOutputLength: 24 * 1024 ** 2 });
   const bundle = JSON.parse(raw);
-  if (bundle.schema !== 1 || !Array.isArray(bundle.files) || bundle.files.length > 2000)
+  if (![1, 2].includes(bundle.schema) || !Array.isArray(bundle.files) || bundle.files.length > 2000)
     throw Error('Unsupported settings format.');
+  if (bundle.schema === 2) selections.validate(bundle.addonSelection);
+  else if (bundle.addonSelection !== undefined) throw Error('Unsupported settings format.');
   const seen = new Set();
   for (const f of bundle.files) {
     if (
@@ -101,11 +105,16 @@ async function apply(root, account, payload, data, running) {
   const bundle = decode(payload);
   if (await running()) throw Error('Close WoW before applying settings.');
   const base = await accountRoot(root, account);
-  const backup = path.join(data, 'settings-backups', String(Date.now()));
+  const files = [
+    ...bundle.files,
+    ...(bundle.schema === 2 ? await selections.plan(root, base, bundle.addonSelection) : []),
+  ];
+  const backup = path.join(data, 'settings-backups', Date.now() + '-' + crypto.randomUUID());
   await fs.mkdir(backup, { recursive: true });
   const changed = [];
   try {
-    for (const f of bundle.files) {
+    for (const f of files) {
+      if (await running()) throw Error('WoW started. Settings change cancelled.');
       const dest = path.join(base, ...f.path.split('/'));
       let current = base;
       for (const part of f.path.split('/')) {
@@ -121,15 +130,20 @@ async function apply(root, account, payload, data, running) {
       }
       changed.push({ path: f.path, had });
       await fs.mkdir(path.dirname(dest), { recursive: true });
-      const tmp = dest + '.astral.tmp';
-      await fs.writeFile(tmp, Buffer.from(f.content, 'base64'));
-      await fs.rename(tmp, dest);
+      const tmp = dest + '.astral-' + crypto.randomUUID() + '.tmp';
+      try {
+        await fs.writeFile(tmp, Buffer.from(f.content, 'base64'), { flag: 'wx' });
+        await fs.rename(tmp, dest);
+      } finally {
+        await fs.rm(tmp, { force: true });
+      }
     }
+    if (await running()) throw Error('WoW started. Settings change cancelled.');
     await save(path.join(backup, 'manifest.json'), {
       files: changed,
       time: new Date().toISOString(),
     });
-    return bundle.files.length;
+    return files.length;
   } catch (e) {
     for (const f of changed.reverse()) {
       const dest = path.join(base, ...f.path.split('/'));
@@ -144,8 +158,8 @@ function inspect(payload) {
   const raw = zlib.gunzipSync(Buffer.from(payload, 'base64'), { maxOutputLength: 24 * 1024 ** 2 });
   return {
     hash: crypto.createHash('sha256').update(raw).digest('hex'),
-    files: bundle.files.length,
+    files: bundle.files.length + (bundle.schema === 2 ? 1 : 0),
     bytes: raw.length,
   };
 }
-module.exports = { inspect, allowed, accounts, capture, decode, apply };
+module.exports = { inspect, allowed, accounts, accountRoot, capture, decode, apply };

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.0
+
+- Choose which installed addons run in each profile from Profiles & sync, including while signed out.
+- Preview addon, UI and binding changes before switching profiles. Save the outgoing setup and restore the selected local setup with WoW closed.
+- Preserve per-character differences and prevent new dependency breakage. Addons installed for another profile stay off when absent from the selected profile's choices.
+- Include addon enablement in profile cloud backups; retain choices for addons not yet installed on another computer.
+- Use settings snapshot format 2. Update Astral on all computers before syncing these backups; older backups remain readable.
+- Keep primary-button hover colors consistent with the current theme.
+
 ## 0.6.8
 
 - Add Forever essentials in Discover to install missing UI, quest and encounter tools in dependency order.

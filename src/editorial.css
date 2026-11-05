@@ -338,6 +338,8 @@ a {
   border: 1px solid var(--accent);
 }
 .button.primary:hover {
+  background: var(--accent);
+  box-shadow: none;
   filter: brightness(1.1);
 }
 .button.secondary {
@@ -1955,4 +1957,53 @@ input[type='checkbox'] {
   flex: 1;
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.profile-addon-list {
+  max-height: 360px;
+  overflow-y: auto;
+  border-top: 1px solid var(--line);
+}
+.profile-addon-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  font-size: 13px;
+}
+.profile-addon-row small {
+  display: block;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.profile-addon-row input {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+}
+.profile-review {
+  max-height: 85vh;
+  overflow-y: auto;
+}
+.profile-review .control-list {
+  max-height: 280px;
+  overflow-y: auto;
+}
+.profile-review .control-row {
+  gap: 20px;
+}
+.profile-review .control-row span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.profile-review details {
+  margin-top: 16px;
+}
+.profile-review li {
+  overflow-wrap: anywhere;
+  font-size: 12px;
 }

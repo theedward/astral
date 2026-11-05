@@ -9,6 +9,8 @@ const actions = [
   'sharedLibrary',
   'shareLibrary',
   'setSyncProfile',
+  'previewProfile',
+  'applyProfile',
   'syncProfiles',
   'createSyncProfile',
   'renameSyncProfile',

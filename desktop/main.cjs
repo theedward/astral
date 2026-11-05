@@ -21,6 +21,9 @@ const updater = require('./updater.cjs'),
 const scheduler = require('./scheduler.cjs');
 const addonActivity = require('./addon-activity.cjs');
 const suites = require('./suites.cjs');
+const localProfiles = require('./local-profiles.cjs');
+const addonSelection = require('./addon-selection.cjs');
+const profilePreviews = new Map();
 const clients = require('./clients.cjs');
 const credentials = require('./credentials.cjs').create(safeStorage);
 const { AppUpdates } = require('./app-updates.cjs');
@@ -48,6 +51,7 @@ const mutations = new Set([
   'sync',
   'shareLibrary',
   'setSyncProfile',
+  'applyProfile',
   'createSyncProfile',
   'renameSyncProfile',
   'deleteSyncProfile',
@@ -152,6 +156,18 @@ async function state() {
     if (await engine.exists(root)) clients.push({ id, root, label });
   }
   const artwork = new Map(inventory.addons.filter((a) => a.icon).map((a) => [a.id, a.icon]));
+  let addonChoices = { rows: [] };
+  if (config.account) {
+    try {
+      const base = await settings.accountRoot(config.root, config.account);
+      addonChoices.rows = addonSelection.rows(
+        await addonSelection.capture(config.root, base),
+        inventory.addons,
+      );
+    } catch (error) {
+      addonChoices.error = error.message;
+    }
+  }
   for (const client of clients.filter((c) => c.root !== config.root)) {
     const other = await engine.inventory(client.root, data);
     for (const addon of other.addons)
@@ -159,6 +175,7 @@ async function state() {
   }
   return {
     ...inventory,
+    addonChoices,
     flavor: type,
     clients,
     catalog: engine.catalog
@@ -437,17 +454,78 @@ async function main() {
   handle('setSyncProfile', async (value) => {
     if (!validSyncProfile(value)) throw Error('Unknown sync profile.');
     if (value === syncProfile()) return state();
-    if (await engine.gameRunning()) throw Error('Close WoW before switching sync profiles.');
-    if (!['regular', 'handheld'].includes(value)) {
+    throw Error('Review the profile change before switching.');
+  });
+  handle('previewProfile', async (value, edits = {}) => {
+    if (taskActive) throw Error('Wait until the current operation finishes.');
+    if (!validSyncProfile(value)) throw Error('Unknown sync profile.');
+    if (await engine.gameRunning()) throw Error('Close WoW before changing profiles.');
+    if (
+      !['regular', 'handheld'].includes(value) &&
+      value !== syncProfile() &&
+      !(await localProfiles.read(data, config.root, config.account, value))
+    ) {
       const { profiles } = await request(syncProfilesPath());
       if (!profiles.some((p) => p.id === value)) throw Error('Unknown sync profile.');
     }
-    config.syncProfile = value;
-    config.syncProfilePending = true;
-    config.lastHash = null;
-    config.lastSync = null;
-    config.syncRevision = 0;
-    await persist();
+    const from = syncProfile(),
+      root = config.root,
+      account = config.account;
+    const plan = await localProfiles.prepare({ data, root, account, from, to: value, edits });
+    if (config.root !== root || config.account !== account || syncProfile() !== from)
+      throw Error('The selected setup changed. Review the profile again.');
+    const token = crypto.randomBytes(24).toString('hex');
+    profilePreviews.clear();
+    profilePreviews.set(token, {
+      root,
+      account,
+      from,
+      to: value,
+      edits,
+      fingerprint: plan.fingerprint,
+      expires: Date.now() + 300000,
+    });
+    return {
+      token,
+      target: value,
+      initialized: plan.initialized,
+      changes: plan.changes,
+      changedSettings: plan.changedSettings,
+    };
+  });
+  handle('applyProfile', async (token) => {
+    const preview = profilePreviews.get(token);
+    profilePreviews.delete(token);
+    if (
+      !preview ||
+      preview.expires < Date.now() ||
+      preview.root !== config.root ||
+      preview.account !== config.account ||
+      preview.from !== syncProfile()
+    )
+      throw Error('The setup changed. Review the profile again.');
+    const previous = structuredClone(config);
+    await localProfiles.apply({
+      data,
+      ...preview,
+      expected: preview.fingerprint,
+      running: engine.gameRunning,
+      commit: async () => {
+        if (preview.to !== preview.from) {
+          config.syncProfile = preview.to;
+          config.syncProfilePending = true;
+          config.lastHash = null;
+          config.lastSync = null;
+          config.syncRevision = 0;
+        }
+        try {
+          await persist();
+        } catch (error) {
+          config = previous;
+          throw error;
+        }
+      },
+    });
     return state();
   });
   handle('revokeDevice', async (id) => {
@@ -489,12 +567,7 @@ async function main() {
     if (confirm !== 'DELETE') throw Error('Type DELETE to remove your cloud data.');
     await request('/account/data', { method: 'DELETE', body: { confirm } });
     await fs.rm(path.join(data, 'session.json'), { force: true });
-    config.lastHash = null;
-    config.lastSync = null;
-    config.syncRevision = 0;
-    config.spaces = {};
-    config.syncProfile = 'regular';
-    config.syncProfilePending = true;
+    config = clients.resetSync(config);
     await persist();
     return state();
   });

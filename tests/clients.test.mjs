@@ -75,3 +75,31 @@ test('a different installation does not reuse the old installation sync cursor',
   assert.equal(selected.lastHash, null);
   assert.equal(selected.syncRevision, 0);
 });
+
+test('deleting cloud data resets sync cursors while preserving each local profile choice', () => {
+  const original = {
+    root: '/wow/_retail_',
+    account: 'LOCAL',
+    syncProfile: 'handheld',
+    lastHash: 'old',
+    syncRevision: 4,
+    spaces: {
+      forever: {
+        root: '/wow/_forever_',
+        account: 'OTHER',
+        syncProfile: 'a'.repeat(32),
+        lastHash: 'other',
+        syncRevision: 8,
+      },
+    },
+  };
+  const next = clients.resetSync(original);
+  assert.equal(next.syncProfile, 'handheld');
+  assert.equal(next.account, 'LOCAL');
+  assert.equal(next.lastHash, null);
+  assert.equal(next.syncProfilePending, true);
+  assert.equal(next.spaces.forever.syncProfile, 'a'.repeat(32));
+  assert.equal(next.spaces.forever.account, 'OTHER');
+  assert.equal(next.spaces.forever.syncRevision, 0);
+  assert.equal(original.spaces.forever.syncRevision, 8);
+});

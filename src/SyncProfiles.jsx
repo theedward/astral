@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import useDialog from './useDialog.js';
+import ProfileReview from './ProfileReview.jsx';
 
 const defaults = [
   { id: 'regular', name: 'Regular' },
@@ -12,17 +13,43 @@ export default function SyncProfiles({ s, busy, call }) {
   const [editing, setEditing] = useState(null);
   const [name, setName] = useState('');
   const [refresh, setRefresh] = useState(0);
+  const [plan, setPlan] = useState(null);
   const active = s.syncProfile || 'regular';
   const ref = useDialog(!!editing, () => !busy && setEditing(null));
 
   useEffect(() => {
-    setProfiles(null);
+    const cacheKey = 'astral-profile-names:' + JSON.stringify([s.root, s.account]);
+    try {
+      const cached = JSON.parse(localStorage.getItem(cacheKey));
+      setProfiles(
+        Array.isArray(cached)
+          ? cached
+              .filter(
+                (p) =>
+                  /^(regular|handheld|[a-f0-9]{32})$/.test(p.id) &&
+                  typeof p.name === 'string' &&
+                  p.name.length <= 40,
+              )
+              .slice(0, 8)
+          : null,
+      );
+    } catch {
+      setProfiles(null);
+    }
     setError('');
     if (!s.signedIn || !window.astral) return;
     let live = true;
     window.astral
       .syncProfiles()
-      .then(({ profiles }) => live && setProfiles(profiles))
+      .then(({ profiles }) => {
+        if (live) {
+          setProfiles(profiles);
+          localStorage.setItem(
+            cacheKey,
+            JSON.stringify(profiles.map(({ id, name }) => ({ id, name }))),
+          );
+        }
+      })
       .catch(
         (e) =>
           live && setError(e.message.replace(/^Error invoking remote method '[^']+': Error: /, '')),
@@ -30,9 +57,9 @@ export default function SyncProfiles({ s, busy, call }) {
     return () => {
       live = false;
     };
-  }, [s.signedIn, refresh]);
+  }, [s.signedIn, s.root, s.account, refresh]);
 
-  const options = s.signedIn && profiles ? profiles : defaults;
+  const options = profiles || defaults;
   const start = (type, profile) => {
     if (type === 'manage' && !editing) setRefresh((value) => value + 1);
     setName(type === 'rename' ? profile.name : '');
@@ -55,11 +82,19 @@ export default function SyncProfiles({ s, busy, call }) {
   return (
     <>
       <label className="sync-profile-picker">
-        Sync profile
+        Profile
         <select
           value={active}
-          disabled={busy || s.running}
-          onChange={(event) => call('setSyncProfile', event.target.value)}
+          disabled={busy || s.running || !s.account}
+          onChange={async (event) => {
+            const target = event.target.value;
+            const result = await call('previewProfile', target);
+            if (result)
+              setPlan({
+                ...result,
+                name: options.find((profile) => profile.id === target)?.name || 'profile',
+              });
+          }}
         >
           {!options.some((profile) => profile.id === active) && (
             <option value={active} disabled>
@@ -73,6 +108,19 @@ export default function SyncProfiles({ s, busy, call }) {
           ))}
         </select>
       </label>
+      {!s.account && (
+        <p className="control-hint">Open WoW once, then close it to set up profiles.</p>
+      )}
+      <ProfileReview
+        plan={plan}
+        name={plan?.name}
+        busy={busy}
+        onClose={() => setPlan(null)}
+        onApply={async () => {
+          await call('applyProfile', plan.token);
+          setPlan(null);
+        }}
+      />
       {s.signedIn && (
         <button
           className="text-button profile-manager-button"
@@ -95,7 +143,7 @@ export default function SyncProfiles({ s, busy, call }) {
             {editing.type === 'manage' ? (
               <>
                 <h2 id="sync-profile-title">
-                  {s.flavor === 'forever' ? 'Forever' : 'Retail'} sync profiles
+                  {s.flavor === 'forever' ? 'Forever' : 'Retail'} profiles
                 </h2>
                 {error && <p role="alert">{error}</p>}
                 {!profiles && !error && <p>Loading profiles…</p>}
@@ -160,7 +208,7 @@ export default function SyncProfiles({ s, busy, call }) {
                     ? 'Delete ' + editing.profile.name + '?'
                     : editing.type === 'rename'
                       ? 'Rename profile'
-                      : 'New sync profile'}
+                      : 'New profile'}
                 </h2>
                 {editing.type === 'delete' ? (
                   <p>

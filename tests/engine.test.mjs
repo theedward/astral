@@ -137,7 +137,8 @@ test('capture excludes graphics, backups and unknown credentials', async (t) => 
   }))
     await fs.writeFile(path.join(base, rel), value);
   const b = await settings.capture(f.root, 'LOCAL');
-  assert.equal(b.files, 3);
+  assert.equal(b.files, 4);
+  assert.equal(settings.decode(b.payload).schema, 2);
   assert.deepEqual(
     settings.decode(b.payload).files.map((f) => f.path),
     ['bindings-cache.wtf', 'Realm/Character/bindings-cache.wtf', 'SavedVariables/EllesmereUI.lua'],

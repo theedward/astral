@@ -1,0 +1,17 @@
+# Addons per profile
+
+Open the portrait menu → Profiles & sync. Choose Regular, Handheld or an existing named profile. Review the changes and select Save and switch. WoW must be closed, and a local WoW account must have been created by logging in at least once.
+
+The first local use of a profile starts with the current setup. Later switches save the outgoing profile's current supported UI settings, bindings and addon choices, then restore the selected local setup. Choosing a cloud sync profile no longer silently changes only the cloud slot. Manual cloud sync remains a separate, explicit step; automatic sync pauses after a profile switch until the user reviews cloud settings.
+
+Under Addons in this profile, select the installed addon groups to use, then Review changes → Apply choices. Different character choices appear as mixed checkboxes. Untouched groups preserve those differences; changing a checkbox applies that choice to every character in the selected local WoW account and to the account default. Groups include their known component folders. Dependency checks refuse changes that newly enable a dependent without its prerequisite or disable its prerequisite.
+
+Installed files are shared by profiles. This feature enables or disables addons without installing or removing them. Returning to a saved profile turns newly installed addons off when they were absent from that profile's selection. Uninstalled addon choices are retained so another computer can use them after installation. Blizzard addon entries and comments in native selection files are preserved.
+
+Settings snapshots use schema 2, with validated addon choices alongside the existing approved SavedVariables/layout/binding files. The same profile-specific cloud snapshot endpoints carry the data; no new cloud service, paid resource or schema migration is needed. Version 1 snapshots still apply, leaving current addon choices in place. Older Astral versions cannot read version 2: update all computers before syncing these profiles. The approved settings-file allowlist still applies; this does not export every unknown addon's SavedVariables.
+
+Local profile storage is isolated by installation path, local WoW account and stable profile ID. Root/client/account changes invalidate pending previews. A five-minute, one-use preview is rechecked against the current snapshot, saved target and installed addon inventory before applying. Profile IDs and incoming character scopes are validated; links cannot redirect selection writes. Partial settings writes roll back. If saving the profile choice fails after application, the previous setup is restored while WoW remains closed.
+
+Graphics, display settings and controller CVars remain device-local. This feature does not implement the Retail handheld HUD or change bindings automatically; it preserves bindings saved in each profile. WoW's own cloud-binding behavior still needs an in-game check on the actual devices.
+
+Validation includes an isolated filesystem round trip for Regular and Handheld, dependencies, newly installed addons, cross-computer missing addons, character scopes, legacy snapshots, stale previews, game-running guards, failed commits and symlink rejection. The browser interaction test uses simulated data; ConsolePort in the screenshot is an example, not an installed-addon claim. A read-only preview of the real Mac setup succeeded without applying a profile. Live WoW and Ally tests remain pending.

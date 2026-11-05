@@ -424,7 +424,7 @@ function App() {
                   </div>
                   <button onClick={() => navigate('Your setup')}>
                     <Cloud size={17} />
-                    {s.signedIn ? 'Account & sync' : 'Connect Battle.net'}
+                    Profiles &amp; sync
                     <ChevronRight size={14} />
                   </button>
                   {s.signedIn && (
@@ -462,7 +462,7 @@ function App() {
           <div className="page-heading">
             <div>
               <h1>
-                {page === 'Addons' ? 'Library' : page === 'Your setup' ? 'Account & sync' : page}
+                {page === 'Addons' ? 'Library' : page === 'Your setup' ? 'Profiles & sync' : page}
               </h1>
               {page === 'Addons' && s.loaded && <p>{s.addons.length} addons</p>}
             </div>
@@ -1167,7 +1167,7 @@ function App() {
                     }}
                   >
                     <Icon size={18} />
-                    {p === 'Addons' ? 'Library' : p === 'Your setup' ? 'Account & sync' : p}
+                    {p === 'Addons' ? 'Library' : p === 'Your setup' ? 'Profiles & sync' : p}
                     <ArrowRight size={15} />
                   </button>
                 ))}
