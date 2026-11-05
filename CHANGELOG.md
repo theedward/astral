@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.6
+
+- Connect Dialogue UI and Narcissus to their authors' packaged GitHub releases for automatic updates.
+- Compare their letter-patch versions correctly, including versions such as `1.8.7 b` and `v1.8.7-b`.
+
 ## 0.6.5
 
 - Show which addons updated, which failed and which were not attempted after Update all.

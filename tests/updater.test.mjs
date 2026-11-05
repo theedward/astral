@@ -4,6 +4,8 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import updater from '../desktop/updater.cjs';
+import engine from '../desktop/engine.cjs';
+const engineCatalog = (id) => engine.catalog.find((addon) => addon.id === id);
 async function fixture(t) {
   const data = await fs.mkdtemp(path.join(os.tmpdir(), 'astral-daily-'));
   t.after(() => fs.rm(data, { recursive: true, force: true }));
@@ -101,4 +103,17 @@ test('unified daily runner updates Raider.IO with the shared installer', async (
   const r = await updater.run({ data, roots: ['/tmp/_retail_'], legacyRio: false, api });
   assert.equal(installed, true);
   assert.equal(r.runs[0].results[0].status, 'updated');
+});
+
+test('author letter patches update correctly without confusing prereleases or downgrades', () => {
+  const definition = engineCatalog('narcissus');
+  const compare = (installed, available) =>
+    updater.newer({ ...definition, version: installed }, { version: available });
+  assert.equal(compare('1.8.7 b', '1.8.7-b'), false);
+  assert.equal(compare('1.8.7', '1.8.7-b'), true);
+  assert.equal(compare('1.8.7 b', '1.8.7-c'), true);
+  assert.equal(compare('1.8.7 c', '1.8.7-b'), false);
+  assert.equal(compare('1.8.7 c', '1.8.8'), true);
+  assert.equal(compare('1.8.7 b', '1.8.7-beta'), null);
+  assert.equal(compare('development', '1.8.7-b'), null);
 });
