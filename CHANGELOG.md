@@ -1,11 +1,12 @@
 # Changelog
 
-## 0.6.7
+## 0.6.8
 
 - Add Forever essentials in Discover to install missing UI, quest and encounter tools in dependency order.
 - Manage Questie with its database, DBM core, Forever dungeon modules and compatible raid/world-boss modules through official release sources.
 - Track Questie's bundled database updates and DBM revision versions correctly.
 - Support client-exclusion annotations in release file lists, fixing DBM package validation.
+- Build Mac releases on the supported macOS 15 runner. The 0.6.7 release was not published after the previous runner was retired.
 
 ## 0.6.6
 
