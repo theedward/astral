@@ -2,26 +2,7 @@ const path = require('node:path');
 const engine = require('./engine.cjs');
 const { allowed, flavor } = require('./flavors.cjs');
 const DAY = 24 * 60 * 60 * 1000;
-function newer(addon, release) {
-  const clean = (value) =>
-    String(value || '')
-      .replace(/^v\.?\s*/, '')
-      .match(/^(\d+(?:\.\d+)*)(?:[-+].*)?$/)?.[1]
-      ?.split('.')
-      .map(Number);
-  if (addon.id === 'rio') {
-    const a = String(addon.version).match(/v(\d{12})/)?.[1],
-      b = String(release.tag).match(/v(\d{12})/)?.[1];
-    return !!a && !!b && b > a;
-  }
-  const a = clean(addon.version),
-    b = clean(release.version);
-  if (!a || !b) return null;
-  for (let i = 0; i < Math.max(a.length, b.length); i++) {
-    if ((b[i] || 0) !== (a[i] || 0)) return (b[i] || 0) > (a[i] || 0);
-  }
-  return false;
-}
+const { newer } = engine;
 async function status(data) {
   return engine.json(path.join(data, 'daily-updates.json'), { nextAt: 0, runs: [] });
 }

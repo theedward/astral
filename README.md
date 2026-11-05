@@ -20,6 +20,7 @@ Cloud infrastructure is live:
 - Dedicated Cloudflare Workers + D1 sync service with Battle.net browser login, per-device sessions, version conflicts and five retained snapshots per game client. New desktop installs use the deployed Astral service by default; custom service addresses are preserved.
 - Cloud controls list computers, revoke sessions, restore retained versions and delete all account data with confirmation. Cloud restores back up local settings before applying.
 - Free-tier guard: 10 MiB of settings payloads per user, 50 MiB service-wide, 60 uploads per user/day, 200 service uploads/day and 20,000 API requests/day. Uploads stop at limits; Astral never enables paid billing. These are application limits, not a Cloudflare account billing cap.
+- Share an addon list from Account & sync. Another computer on that profile can install missing addons from connected sources or open their official download pages.
 - Choose a sync profile per computer and game client. Manage profiles lets you rename Regular and Handheld and add or delete custom profiles. After switching, select Sync now to link the local setup to that profile. Settings sync waits for WoW to exit.
 
 Wago and CurseForge are not connected. Their public publishing APIs/approval processes do not establish permission to ship a consumer catalogue integration. See [source research](docs/sources.md).

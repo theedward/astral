@@ -58,6 +58,12 @@ async function fixture(t) {
       'utf8',
     ),
   );
+  DBi.db.exec(
+    await fs.readFile(
+      new URL('../cloud/migrations/0004_profile_libraries.sql', import.meta.url),
+      'utf8',
+    ),
+  );
   t.after(() => DBi.db.close());
   return {
     DB: DBi,
@@ -476,4 +482,24 @@ test('custom profiles keep stable backups on rename and cannot be recreated by s
   assert.equal((await send(retail + '/' + id, 'DELETE', { confirm: id })).status, 200);
   assert.equal((await send(slot, 'PUT', snapshot(0))).status, 404);
   assert.equal((await (await send('/profiles/retail-handheld/current')).json()).revision, 1);
+});
+
+test('shared libraries stay separate from settings revisions and other devices cannot overwrite newer lists', async (t) => {
+  const env = await fixture(t);
+  const token = await login(env);
+  const other = await login(env, 'user-b');
+  const send = (url, method = 'GET', data = null, auth = token) =>
+    worker.fetch(req(url, method, data, auth), env);
+  const url = '/profiles/retail/library';
+  const addons = [{ folder: 'HandyNotes', name: 'HandyNotes' }];
+  assert.equal((await send('/profiles/retail/current', 'PUT', snapshot(0))).status, 200);
+  assert.equal((await send(url, 'PUT', { addons, revision: 0 })).status, 200);
+  assert.equal((await send(url, 'PUT', { addons: [], revision: 0 })).status, 409);
+  assert.deepEqual(await (await send(url)).json(), { addons, revision: 1 });
+  for (const remote of [
+    await send('/profiles/retail-handheld/library'),
+    await send(url, 'GET', null, other),
+  ])
+    assert.deepEqual(await remote.json(), { addons: null, revision: 0 });
+  assert.equal((await (await send('/profiles/retail/current')).json()).revision, 1);
 });

@@ -6,6 +6,8 @@ const actions = [
   'installAppUpdate',
   'appUpdateChecks',
   'cloudInfo',
+  'sharedLibrary',
+  'shareLibrary',
   'setSyncProfile',
   'syncProfiles',
   'createSyncProfile',

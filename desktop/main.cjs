@@ -43,6 +43,7 @@ const mutations = new Set([
   'importZip',
   'restore',
   'sync',
+  'shareLibrary',
   'setSyncProfile',
   'createSyncProfile',
   'renameSyncProfile',
@@ -100,7 +101,9 @@ async function request(route, { method = 'GET', body, token = true } = {}) {
       win?.webContents.send('astral:changed');
     }
     if (r.status === 409) {
-      const e = Error('Both computers have changed. Choose which setup to keep before syncing.');
+      const e = Error(
+        result.error || 'Both computers have changed. Review both versions before syncing.',
+      );
       e.conflict = true;
       throw e;
     }
@@ -392,6 +395,22 @@ async function main() {
     return shell.openExternal('https://github.com/' + repo + '/releases');
   });
   handle('cloudInfo', async () => request('/cloud/' + syncScope()));
+  const libraryPath = () => '/profiles/' + syncScope() + '/library';
+  handle('sharedLibrary', () => request(libraryPath()));
+  handle('shareLibrary', async (revision) => {
+    if (!(await engine.exists(path.join(config.root, 'Interface', 'AddOns'))))
+      throw Error('Select your WoW installation folder first.');
+    const { addons } = await engine.inventory(config.root, data);
+    const seen = new Set();
+    const library = [];
+    for (const addon of addons) {
+      const key = addon.folder.toLowerCase();
+      if (seen.has(key) || !/^[a-z0-9_-]{1,100}$/.test(key)) continue;
+      seen.add(key);
+      library.push({ folder: addon.folder, name: addon.name.trim().slice(0, 100) || addon.folder });
+    }
+    return request(libraryPath(), { method: 'PUT', body: { addons: library, revision } });
+  });
   const syncProfilesPath = () => '/sync-profiles/' + flavors.flavor(config.root);
   handle('syncProfiles', () => request(syncProfilesPath()));
   handle('createSyncProfile', (name) =>
@@ -570,7 +589,7 @@ async function main() {
         percent: Math.round((i / Math.max(1, all.addons.length)) * 100),
       });
       try {
-        releases[a.id] = await engine.getRelease(a, data);
+        releases[a.id] = await engine.getRelease(a, data, true);
       } catch (e) {
         releases[a.id] = { error: e.message };
       }
@@ -584,6 +603,10 @@ async function main() {
     const inv = await engine.inventory(config.root, data);
     const addon = inv.addons.find((x) => x.id === id) || a;
     const release = await engine.getRelease(a, data);
+    if (addon.installed && updater.newer(addon, release) === false) {
+      releases[id] = release;
+      return state();
+    }
     try {
       send({ id, kind: 'update', percent: 0, message: 'Preparing ' + a.name });
       await engine.install(addon, config.root, data, release, (percent) =>

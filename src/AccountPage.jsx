@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import CloudPanel from './CloudPanel.jsx';
 import SyncProfiles from './SyncProfiles.jsx';
+import SharedLibrary from './SharedLibrary.jsx';
 export default function AccountPage({ s, busy, call, notify, time, snapshot, connectionError }) {
   return (
     <div className="account-view">
@@ -113,7 +114,16 @@ export default function AccountPage({ s, busy, call, notify, time, snapshot, con
         </aside>
         <div className="account-cloud">
           {s.signedIn ? (
-            <CloudPanel s={s} busy={busy} call={call} notify={notify} />
+            <>
+              <SharedLibrary
+                key={s.flavor + '/' + s.syncProfile}
+                s={s}
+                busy={busy}
+                call={call}
+                notify={notify}
+              />
+              <CloudPanel s={s} busy={busy} call={call} notify={notify} />
+            </>
           ) : (
             <section className="disconnected-story">
               <h3>Cloud backups</h3>

@@ -1,0 +1,2 @@
+ALTER TABLE profiles ADD COLUMN library TEXT;
+ALTER TABLE profiles ADD COLUMN library_revision INTEGER NOT NULL DEFAULT 0;

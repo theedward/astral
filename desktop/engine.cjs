@@ -159,10 +159,6 @@ async function inventory(root, data) {
   }
   return { addons: groups, folderCount: folders.length };
 }
-function installedTag(addon) {
-  const v = addon.version;
-  return addon.id === 'rio' ? (v.match(/v\d{12}/) || [])[0] || v : v.replace(/^v\.?\s*/, '');
-}
 async function getRelease(addon, data, force = false) {
   if (!addon.repo) throw Error('Automatic downloads are not connected for this source.');
   const file = path.join(data, 'releases', addon.id + '.json');
@@ -200,8 +196,28 @@ async function getRelease(addon, data, force = false) {
   await save(file, result);
   return result;
 }
+function newer(addon, release) {
+  const clean = (value) =>
+    String(value || '')
+      .replace(/^v\.?\s*/, '')
+      .match(/^(\d+(?:\.\d+)*)(?:[-+].*)?$/)?.[1]
+      ?.split('.')
+      .map(Number);
+  if (addon.id === 'rio') {
+    const a = String(addon.version).match(/v(\d{12})/)?.[1],
+      b = String(release.tag).match(/v(\d{12})/)?.[1];
+    return a && b ? b > a : null;
+  }
+  const a = clean(addon.version),
+    b = clean(release.version);
+  if (!a || !b) return null;
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    if ((b[i] || 0) !== (a[i] || 0)) return (b[i] || 0) > (a[i] || 0);
+  }
+  return false;
+}
 function needsUpdate(addon, release) {
-  return installedTag(addon) !== (addon.id === 'rio' ? release.tag : release.version);
+  return newer(addon, release) === true;
 }
 async function unzip(archive, destination, allowed) {
   await fs.mkdir(destination, { recursive: true });
@@ -360,7 +376,15 @@ async function install(addon, root, data, release, onProgress = () => {}, option
       if (!file) throw Error('Client addon metadata missing: ' + n);
       const content = await fs.readFile(path.join(dir, file), 'utf8');
       const meta = toc(content);
-      if (!(meta.Interface || '').split(/[,\s]+/).includes(targetInterface)) {
+      const interfaces = (meta.Interface || '').split(/[,\s]+/);
+      // HandyNotes uses the base Retail patch number for its packaged release.
+      const compatiblePatch =
+        addon.allowRetailPatchMismatch &&
+        flavor(root) === 'retail' &&
+        interfaces.some(
+          (value) => /^\d{6}$/.test(value) && value.slice(0, -2) === targetInterface.slice(0, -2),
+        );
+      if (!interfaces.includes(targetInterface) && !compatiblePatch) {
         if (n === addon.folder) throw Error(n + ' does not list the selected client build.');
         continue;
       }
@@ -514,6 +538,7 @@ module.exports = {
   gameRunning,
   getRelease,
   needsUpdate,
+  newer,
   unzip,
   install,
   backups,

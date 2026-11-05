@@ -291,8 +291,74 @@ async function manageProfiles(request, env, who, body, client, id) {
   }
   return null;
 }
+async function profileLibrary(request, env, who, body, scope) {
+  const custom = /-[a-f0-9]{32}$/.test(scope);
+  if (request.method === 'GET') {
+    const row = await q(
+      env,
+      'SELECT library,library_revision FROM profiles WHERE user_id=? AND flavor=?',
+      who.user_id,
+      scope,
+    ).first();
+    if (!row && custom) return json({ error: 'This sync profile was deleted.' }, 404);
+    return json({
+      addons: row?.library ? JSON.parse(row.library) : null,
+      revision: row?.library_revision || 0,
+    });
+  }
+  if (request.method !== 'PUT') return null;
+  const { addons, revision } = await body(request, 64000);
+  if (
+    !Number.isSafeInteger(revision) ||
+    revision < 0 ||
+    !Array.isArray(addons) ||
+    addons.length > 250
+  )
+    return json({ error: 'Invalid addon library.' }, 400);
+  const seen = new Set();
+  const library = [];
+  for (const entry of addons) {
+    if (
+      !entry ||
+      typeof entry.folder !== 'string' ||
+      !/^[a-z0-9_-]{1,100}$/i.test(entry.folder) ||
+      typeof entry.name !== 'string' ||
+      !entry.name.trim() ||
+      entry.name.length > 100 ||
+      seen.has(entry.folder.toLowerCase())
+    )
+      return json({ error: 'Invalid or duplicate addon in the library.' }, 400);
+    seen.add(entry.folder.toLowerCase());
+    library.push({ folder: entry.folder, name: entry.name });
+  }
+  const [, updated] = await env.DB.batch([
+    q(
+      env,
+      'INSERT INTO profiles(user_id,flavor,revision) SELECT ?,?,0 WHERE ? ON CONFLICT(user_id,flavor) DO NOTHING',
+      who.user_id,
+      scope,
+      custom ? 0 : 1,
+    ),
+    q(
+      env,
+      'UPDATE profiles SET library=?,library_revision=library_revision+1 WHERE user_id=? AND flavor=? AND library_revision=?',
+      JSON.stringify(library),
+      who.user_id,
+      scope,
+      revision,
+    ),
+  ]);
+  if (!updated.meta.changes)
+    return json({ error: 'The shared library changed. Refresh and try again.' }, 409);
+  return json({ addons: library, revision: revision + 1 });
+}
+
 export async function controls(request, env, who, body, random) {
   const path = new URL(request.url).pathname;
+  const library = path.match(
+    /^\/profiles\/((?:retail|forever)(?:-handheld|-[a-f0-9]{32})?)\/library$/,
+  );
+  if (library) return profileLibrary(request, env, who, body, library[1]);
   const manager = path.match(
     /^\/sync-profiles\/(retail|forever)(?:\/(regular|handheld|[a-f0-9]{32}))?$/,
   );
