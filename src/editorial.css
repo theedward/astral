@@ -1933,3 +1933,26 @@ input[type='checkbox'] {
 .sync-profile-picker input {
   min-width: 0;
 }
+
+.update-result {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  padding: 20px;
+  margin-bottom: 24px;
+}
+.update-result .section-heading {
+  margin-bottom: 8px;
+}
+.update-result p {
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.update-result > .text-button {
+  margin-top: 12px;
+}
+.activity-content {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

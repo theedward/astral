@@ -35,6 +35,7 @@ import './editorial.css';
 import AccountPage from './AccountPage.jsx';
 import ProviderMark from './ProviderMark.jsx';
 import DiscoveryPanel from './DiscoveryPanel.jsx';
+import { runUpdateQueue } from './update-queue.js';
 import astralMark from '../assets/icon.png';
 import wowRetailIcon from '../assets/games/wow-retail.png';
 import wowForeverIcon from '../assets/games/wow-forever.png';
@@ -80,6 +81,8 @@ function App() {
     [query, setQuery] = useState(''),
     [filter, setFilter] = useState('All addons'),
     [requestBusy, setBusy] = useState(false),
+    [queueBusy, setQueueBusy] = useState(false),
+    [queueResult, setQueueResult] = useState(null),
     [progress, setProgress] = useState({}),
     [toast, setToast] = useState(null),
     [connectionError, setConnectionError] = useState(null),
@@ -109,7 +112,21 @@ function App() {
     setAccountOpen(false);
     setToolsOpen(false);
   };
-  const busy = requestBusy || progress.kind === 'update' || !s.loaded;
+  const busy = requestBusy || queueBusy || progress.kind === 'update' || !s.loaded;
+  const selectedBackup =
+    selected &&
+    s.backups.find(
+      (backup) => backup.addonId === selected.id && backup.previousFolders?.length > 0,
+    );
+  const selectedFailure =
+    selected && s.addonActivity?.find((entry) => entry.addonId === selected.id);
+  useEffect(() => {
+    setSelected((current) => (current ? s.addons.find((a) => a.id === current.id) || null : null));
+    setQueueResult(null);
+  }, [s.root]);
+  useEffect(() => {
+    setSelected((current) => (current ? s.addons.find((a) => a.id === current.id) || null : null));
+  }, [s.addons]);
   const search = useRef(null),
     toastTimer = useRef(null);
   const notify = (message, error = false) => {
@@ -224,8 +241,14 @@ function App() {
   const update = async (a) => {
     const r = await call('update', a.id);
     if (r) {
-      notify(a.name + ' is installed and backed up.');
-      setSelected(r.addons.find((x) => x.id === a.id));
+      const installed = r.addons.find((x) => x.id === a.id);
+      notify(
+        a.name +
+          (installed?.version === a.version
+            ? ' is already up to date.'
+            : ' is installed and backed up.'),
+      );
+      setSelected(installed);
     }
   };
   const importZip = async (addon) => {
@@ -236,10 +259,25 @@ function App() {
     }
   };
   const updateAll = async () => {
-    for (const a of s.addons.filter((a) => a.status === 'update')) {
-      if (!(await call('update', a.id))) break;
+    if (!api) return call('update');
+    setQueueBusy(true);
+    setQueueResult(null);
+    try {
+      const result = await runUpdateQueue(
+        s.addons.filter((a) => a.status === 'update'),
+        (addon) => api.update(addon.id),
+        setS,
+      );
+      setQueueResult(result);
+      if (result.failed) {
+        const fresh = await api.state();
+        setS(fresh);
+      }
+    } catch (error) {
+      notify(error.message, true);
+    } finally {
+      setQueueBusy(false);
     }
-    notify('Update queue finished.');
   };
   const time = (t) =>
     t
@@ -484,6 +522,44 @@ function App() {
               </div>
             ) : (
               <>
+                {queueResult && (
+                  <section className="update-result" aria-label="Update results" role="status">
+                    <div className="section-heading">
+                      <strong>
+                        {queueResult.updated.length} updated
+                        {queueResult.current.length > 0
+                          ? ` · ${queueResult.current.length} already current`
+                          : ''}
+                        {queueResult.failed
+                          ? ` · 1 failed · ${queueResult.pending.length} not attempted`
+                          : ''}
+                      </strong>
+                      <button className="text-button" onClick={() => setQueueResult(null)}>
+                        Dismiss
+                      </button>
+                    </div>
+                    {queueResult.updated.length > 0 && (
+                      <p>{queueResult.updated.map((a) => a.name).join(', ')}</p>
+                    )}
+                    {queueResult.failed && (
+                      <>
+                        <p className="update-failure">
+                          <strong>{queueResult.failed.name}:</strong> {queueResult.failed.message}
+                        </p>
+                        {queueResult.pending.length > 0 && (
+                          <p>Not attempted: {queueResult.pending.map((a) => a.name).join(', ')}</p>
+                        )}
+                        <button
+                          className="text-button"
+                          disabled={busy || s.running}
+                          onClick={updateAll}
+                        >
+                          Retry remaining updates
+                        </button>
+                      </>
+                    )}
+                  </section>
+                )}
                 <div className="list-controls">
                   <div className="tabs">
                     {['All addons', 'Updates', 'Manual'].map((t) => (
@@ -679,6 +755,56 @@ function App() {
           )}
           {page === 'Activity' && (
             <>
+              {(s.addonActivity || []).length > 0 && (
+                <section aria-label="Recent addon actions">
+                  <div className="section-heading">
+                    <h3>Recent actions</h3>
+                  </div>
+                  <div className="activity-list">
+                    {s.addonActivity.map((entry) => (
+                      <div className="activity-row" key={entry.id}>
+                        <span className="activity-icon">
+                          {entry.status === 'error' ? (
+                            <AlertCircle size={18} />
+                          ) : (
+                            <Check size={18} />
+                          )}
+                        </span>
+                        <div className="activity-content">
+                          <strong>
+                            {entry.name} ·{' '}
+                            {entry.status === 'error'
+                              ? 'Failed'
+                              : entry.status === 'current'
+                                ? 'Already up to date'
+                                : entry.action === 'restore'
+                                  ? 'Restored'
+                                  : 'Updated'}
+                          </strong>
+                          <p>
+                            {entry.status === 'error'
+                              ? entry.message
+                              : `${entry.from || 'Not installed'} → ${entry.to || 'Installed'}`}
+                          </p>
+                          <p>{time(entry.time)}</p>
+                        </div>
+                        {entry.status === 'error' && entry.action === 'update' && (
+                          <button
+                            className="text-button"
+                            disabled={busy || s.running}
+                            onClick={() => {
+                              const addon = s.addons.find((a) => a.id === entry.addonId);
+                              if (addon) update(addon);
+                            }}
+                          >
+                            Retry
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
               {s.legacyBackups && (
                 <div className="legacy-backups">
                   <div>
@@ -935,6 +1061,11 @@ function App() {
             {selected.release?.error && (
               <div className="inline-note warning">{selected.release.error}</div>
             )}
+            {selectedFailure?.status === 'error' && (
+              <div className="inline-note warning" role="alert">
+                Last attempt failed: {selectedFailure.message}
+              </div>
+            )}
             {selected.repo && (
               <label className="addon-auto-toggle">
                 Include in daily updates
@@ -964,6 +1095,16 @@ function App() {
               >
                 Update from ZIP
                 <FolderOpen size={15} />
+              </button>
+            )}
+            {selectedBackup && (
+              <button
+                className="button secondary full"
+                disabled={busy || s.running}
+                onClick={() => setDialog({ restore: selectedBackup })}
+              >
+                Restore {selectedBackup.version || 'previous version'}
+                <History size={15} />
               </button>
             )}
             <button
@@ -1077,8 +1218,8 @@ function App() {
                     onClick={async () => {
                       const id = dialog.restore.id;
                       setDialog(null);
-                      await call('restore', id);
-                      notify('Previous addon version restored.');
+                      const result = await call('restore', id);
+                      if (result) notify('Previous addon version restored.');
                     }}
                   >
                     Restore previous

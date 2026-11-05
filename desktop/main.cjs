@@ -19,6 +19,7 @@ const flavors = require('./flavors.cjs');
 const updater = require('./updater.cjs'),
   projects = require('./projects.cjs');
 const scheduler = require('./scheduler.cjs');
+const addonActivity = require('./addon-activity.cjs');
 const clients = require('./clients.cjs');
 const credentials = require('./credentials.cjs').create(safeStorage);
 const { AppUpdates } = require('./app-updates.cjs');
@@ -186,6 +187,7 @@ async function state() {
     ),
     updateIgnored: config.updateIgnored?.[type] || [],
     dailyUpdates: await updater.status(data),
+    addonActivity: await addonActivity.list(data, config.root),
     legacyRio: await engine.exists(
       path.join(os.homedir(), 'Library', 'LaunchAgents', 'com.joaoseixas.astral-raiderio.plist'),
     ),
@@ -605,17 +607,20 @@ async function main() {
     if (!a?.repo) throw Error('This addon needs a connected official source.');
     const inv = await engine.inventory(config.root, data);
     const addon = inv.addons.find((x) => x.id === id) || a;
-    const release = await engine.getRelease(a, data);
-    if (addon.installed && updater.newer(addon, release) === false) {
-      releases[id] = release;
-      return state();
-    }
     try {
-      send({ id, kind: 'update', percent: 0, message: 'Preparing ' + a.name });
-      await engine.install(addon, config.root, data, release, (percent) =>
-        send({ id, kind: 'update', percent, message: 'Updating ' + a.name }),
-      );
-      releases[id] = release;
+      await addonActivity.track(data, config.root, addon, 'update', async () => {
+        const release = await engine.getRelease(a, data);
+        if (addon.installed && updater.newer(addon, release) === false) {
+          releases[id] = release;
+          return { version: addon.version, unchanged: true };
+        }
+        send({ id, kind: 'update', percent: 0, message: 'Preparing ' + a.name });
+        const result = await engine.install(addon, config.root, data, release, (percent) =>
+          send({ id, kind: 'update', percent, message: 'Updating ' + a.name }),
+        );
+        releases[id] = release;
+        return result;
+      });
       return await state();
     } finally {
       send({});
@@ -639,8 +644,11 @@ async function main() {
       throw Error('The selected game client changed. Choose the ZIP again.');
     try {
       send({ id, kind: 'update', percent: 0, message: 'Importing ' + addon.name });
-      await engine.importZip(id, root, data, result.filePaths[0], (percent) =>
-        send({ id, kind: 'update', percent, message: 'Importing ' + addon.name }),
+      const installed = (await engine.inventory(root, data)).addons.find((a) => a.id === id);
+      await addonActivity.track(data, root, installed || addon, 'import', () =>
+        engine.importZip(id, root, data, result.filePaths[0], (percent) =>
+          send({ id, kind: 'update', percent, message: 'Importing ' + addon.name }),
+        ),
       );
       delete releases[id];
       return await state();
@@ -649,7 +657,21 @@ async function main() {
     }
   });
   handle('restore', async (id) => {
-    await engine.restore(config.root, data, id);
+    const backup = (await engine.backups(data, config.root)).find((b) => b.id === id);
+    if (!backup) throw Error('Backup not found for this game installation.');
+    const installed = (await engine.inventory(config.root, data)).addons.find(
+      (a) => a.id === backup.addonId,
+    );
+    await addonActivity.track(
+      data,
+      config.root,
+      installed || { id: backup.addonId, name: backup.name },
+      'restore',
+      async () => {
+        await engine.restore(config.root, data, id);
+        return { version: backup.version };
+      },
+    );
     return state();
   });
   handle('chooseRoot', async () => {

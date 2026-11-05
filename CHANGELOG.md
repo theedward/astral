@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.5
+
+- Show which addons updated, which failed and which were not attempted after Update all.
+- Keep manual update, ZIP import and restore results in Activity for each game installation.
+- Restore a backed-up version directly from the addon's details.
+- Keep addon details current after changes and only report a successful restore when it succeeds.
+
 ## 0.6.4
 
 - Save preferences before handing an app update to the installer.
