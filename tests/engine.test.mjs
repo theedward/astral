@@ -395,3 +395,26 @@ test('conditional locale files install correctly and missing applicable locale f
     /Missing or invalid release file/,
   );
 });
+
+test('release file lists respect exclusion annotations for the selected client', async (t) => {
+  const f = await fixture(t);
+  const root = path.join(f.base, '_forever_');
+  await fs.mkdir(path.join(root, 'Interface', 'AddOns'), { recursive: true });
+  const files = {
+    'KeyUI/KeyUI.toc':
+      '## Interface: 16001\n## Version: 2\nClassic\\locale.lua [ExcludeLoadGameType standard, cata, mists]\nRetailOnly.lua [ExcludeLoadGameType camelot]\n',
+    'KeyUI/Classic/locale.lua': '-- Forever locale',
+  };
+  await engine.install(addon, root, f.data, release, () => {}, {
+    running: async () => false,
+    download: download(files),
+  });
+  delete files['KeyUI/Classic/locale.lua'];
+  await assert.rejects(
+    engine.install(addon, root, f.data, release, () => {}, {
+      running: async () => false,
+      download: download(files),
+    }),
+    /Missing or invalid release file/,
+  );
+});

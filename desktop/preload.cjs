@@ -29,6 +29,7 @@ const actions = [
   'client',
   'check',
   'update',
+  'installSuite',
   'importZip',
   'restore',
   'chooseRoot',

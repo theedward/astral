@@ -20,6 +20,7 @@ const updater = require('./updater.cjs'),
   projects = require('./projects.cjs');
 const scheduler = require('./scheduler.cjs');
 const addonActivity = require('./addon-activity.cjs');
+const suites = require('./suites.cjs');
 const clients = require('./clients.cjs');
 const credentials = require('./credentials.cjs').create(safeStorage);
 const { AppUpdates } = require('./app-updates.cjs');
@@ -41,6 +42,7 @@ const previews = new Map();
 let taskActive = false;
 const mutations = new Set([
   'update',
+  'installSuite',
   'importZip',
   'restore',
   'sync',
@@ -187,6 +189,7 @@ async function state() {
     ),
     updateIgnored: config.updateIgnored?.[type] || [],
     dailyUpdates: await updater.status(data),
+    suite: type === 'forever' ? { id: 'forever', addons: suites.FOREVER } : null,
     addonActivity: await addonActivity.list(data, config.root),
     legacyRio: await engine.exists(
       path.join(os.homedir(), 'Library', 'LaunchAgents', 'com.joaoseixas.astral-raiderio.plist'),
@@ -622,6 +625,14 @@ async function main() {
         return result;
       });
       return await state();
+    } finally {
+      send({});
+    }
+  });
+  handle('installSuite', async (id) => {
+    try {
+      const result = await suites.install({ id, root: config.root, data, onProgress: send });
+      return { ...(await state()), suiteResult: result };
     } finally {
       send({});
     }

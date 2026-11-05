@@ -73,8 +73,38 @@ export default function DiscoveryPanel({ s, busy, call, notify, AddonIcon, onLib
     }
   };
   const modalRef = useDialog(!!review, () => !busy && setReview(null));
+  const missingSuite = (s.suite?.addons || []).filter((id) => !s.addons.some((a) => a.id === id));
   return (
     <>
+      {s.suite && missingSuite.length > 0 && (
+        <section className="update-result" aria-label="Forever essentials">
+          <div className="section-heading">
+            <h3>Forever essentials</h3>
+            <button
+              className="button secondary"
+              disabled={busy || s.running}
+              onClick={async () => {
+                const result = await call('installSuite', 'forever');
+                if (result?.suiteResult) {
+                  const report = result.suiteResult;
+                  notify(
+                    report.failed
+                      ? `${report.installed.length} installed. ${report.failed.name}: ${report.failed.message}`
+                      : `${report.installed.length} addons installed.`,
+                    !!report.failed,
+                  );
+                }
+              }}
+            >
+              Install missing ({missingSuite.length})
+            </button>
+          </div>
+          <p>
+            {missingSuite.map((id) => s.catalog.find((a) => a.id === id)?.name || id).join(', ')}
+          </p>
+          {s.running && <p>Close WoW before installing.</p>}
+        </section>
+      )}
       <form className="finder-search" onSubmit={search}>
         <label className="search-box">
           <Search size={16} />

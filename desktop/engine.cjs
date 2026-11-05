@@ -126,6 +126,20 @@ async function inventory(root, data) {
         item.folder + '.toc',
       ].find((f) => files.includes(f)) || files.find((f) => f.endsWith('.toc'));
     const meta = file ? toc(await fs.readFile(path.join(dir, item.folder, file), 'utf8')) : {};
+    if (item.versionCompanion) {
+      const companion = path.join(dir, item.versionCompanion);
+      let companionToc;
+      for (const name of [item.versionCompanion + '_Camelot.toc', item.versionCompanion + '.toc']) {
+        if (await exists(path.join(companion, name))) {
+          companionToc = name;
+          break;
+        }
+      }
+      const companionMeta = companionToc
+        ? toc(await fs.readFile(path.join(companion, companionToc), 'utf8'))
+        : {};
+      meta.Version = (meta.Version || 'Unknown') + '+v' + (companionMeta.Version || '0');
+    }
     groups.push({
       ...item,
       installed: true,
@@ -185,7 +199,10 @@ async function getRelease(addon, data, force = false) {
     throw Error('Unexpected release download address.');
   const result = {
     tag: r.tag_name,
-    version: r.tag_name.replace(/^v\.?\s*/, ''),
+    version: r.tag_name.replace(
+      addon.versionScheme === 'questie-bundle' ? /^bundle\/v/ : /^v\.?\s*/,
+      '',
+    ),
     url: asset.browser_download_url,
     size: asset.size,
     digest: asset.digest || null,
@@ -197,6 +214,21 @@ async function getRelease(addon, data, force = false) {
   return result;
 }
 function newer(addon, release) {
+  if (addon.versionScheme === 'questie-bundle') {
+    const parse = (value) => String(value || '').match(/^(\d+(?:\.\d+)*)\+v(\d+(?:\.\d+)*)$/);
+    const a = parse(addon.version),
+      b = parse(release.version);
+    if (!a || !b) return null;
+    const main = newer({ version: a[1] }, { version: b[1] });
+    if (main) return true;
+    if (newer({ version: b[1] }, { version: a[1] })) return false;
+    return newer({ version: a[2] }, { version: b[2] });
+  }
+  if (addon.versionScheme === 'revision') {
+    const a = String(addon.version || '').match(/^r?(\d+)$/)?.[1];
+    const b = String(release.version || '').match(/^r?(\d+)$/)?.[1];
+    return a && b ? Number(b) > Number(a) : null;
+  }
   if (addon.versionScheme === 'letter-patch') {
     // These authors use letter patches, e.g. TOC "1.8.7 b" and tag "v1.8.7-b".
     // Do not interpret arbitrary prerelease labels as stable letter patches.

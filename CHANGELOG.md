@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.7
+
+- Add Forever essentials in Discover to install missing UI, quest and encounter tools in dependency order.
+- Manage Questie with its database, DBM core, Forever dungeon modules and compatible raid/world-boss modules through official release sources.
+- Track Questie's bundled database updates and DBM revision versions correctly.
+- Support client-exclusion annotations in release file lists, fixing DBM package validation.
+
 ## 0.6.6
 
 - Connect Dialogue UI and Narcissus to their authors' packaged GitHub releases for automatic updates.
