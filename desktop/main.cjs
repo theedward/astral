@@ -336,6 +336,7 @@ async function main() {
       throw Error('App updates are available in the installed version of Astral.');
     if (appUpdates.active) throw Error('Wait for the update download to finish.');
     if (await engine.gameRunning()) throw Error('Close WoW before restarting Astral to update.');
+    await persist();
     if (process.platform === 'darwin') {
       const target = path.resolve(app.getAppPath(), '../../..');
       const plan = await appUpdates.prepareMac(target);
@@ -347,7 +348,9 @@ async function main() {
         await configureSchedule();
         throw error;
       }
-      app.quit();
+      // The detached installer owns restart and rollback. Chromium's normal quit
+      // can wait indefinitely for a pending macOS Keychain request.
+      app.exit(0);
     } else if (process.platform === 'win32') {
       await appUpdates.launchWindows(engine.gameRunning);
       app.quit();

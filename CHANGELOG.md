@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.6.4
+
+- Save preferences before handing an app update to the installer.
+- Prevent a pending macOS Keychain request from holding the old app open during Update & restart.
+
+## 0.6.3
+
+- Handle locale placeholders and multiple load conditions in addon file lists, fixing LittleWigs updates.
+
+## 0.6.2
+
+- Share addon libraries separately from UI settings, with lists scoped to each sync profile.
+- Add HandyNotes to managed updates and refresh release information when checking manually.
+- Compare daily Raider.IO builds correctly and prevent addon downgrades.
+
+## 0.6.1
+
+- Create, rename and delete sync profiles.
+- Install Windows app updates silently and reopen Astral.
+
+## 0.6.0
+
+- Keep regular and handheld UI settings in separate sync profiles for Retail and Forever.
+
 ## 0.5.4
 
 - Keep the app responsive while macOS waits for Keychain access.
