@@ -107,14 +107,7 @@ async function inspect(repo, assetId, root, data, options = {}) {
         if (curated && name !== curated.folder) continue;
         throw Error(name + ' does not declare support for this ' + flavor(root) + ' build.');
       }
-      for (const line of content
-        .split(/\r?\n/)
-        .map((l) => l.trim())
-        .filter((l) => l && !l.startsWith('#'))) {
-        const file = path.resolve(dir, line.replace(/\s+\[[^\]]+\]\s*$/, '').replaceAll('\\', '/'));
-        if (!file.startsWith(path.resolve(unpacked) + path.sep) || !(await engine.exists(file)))
-          throw Error('Missing or invalid release file: ' + line);
-      }
+      await require('./toc-files.cjs').validateFiles(content, dir, unpacked, flavor(root));
       details.push({
         folder: name,
         name: (meta.Title || name).replace(/\|c[0-9a-f]{8}|\|r/gi, ''),

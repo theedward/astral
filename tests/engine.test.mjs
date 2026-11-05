@@ -373,3 +373,25 @@ test('package reviews reject incompatible clients and replacement of another aut
     'original',
   );
 });
+
+test('conditional locale files install correctly and missing applicable locale files fail', async (t) => {
+  const f = await fixture(t);
+  const localized = {
+    'KeyUI/KeyUI.toc':
+      '## Interface: 120105\n## Version: 2\nLocales\\[TextLocale].lua [AllowLoadGameType standard][AllowLoadTextLocale deDE, frFR]\nclassic.lua [AllowLoadGameType vanilla]\n',
+    'KeyUI/Locales/deDE.lua': '-- German',
+    'KeyUI/Locales/frFR.lua': '-- French',
+  };
+  await engine.install(addon, f.root, f.data, release, () => {}, {
+    running: async () => false,
+    download: download(localized),
+  });
+  delete localized['KeyUI/Locales/frFR.lua'];
+  await assert.rejects(
+    engine.install(addon, f.root, f.data, release, () => {}, {
+      running: async () => false,
+      download: download(localized),
+    }),
+    /Missing or invalid release file/,
+  );
+});

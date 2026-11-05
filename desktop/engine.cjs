@@ -389,17 +389,7 @@ async function install(addon, root, data, release, onProgress = () => {}, option
         continue;
       }
       compatible.push(n);
-      for (const line of content
-        .split(/\r?\n/)
-        .map((l) => l.trim())
-        .filter((l) => l && !l.startsWith('#'))) {
-        const filePath = path.resolve(
-          dir,
-          line.replace(/\s+\[[^\]]+\]\s*$/, '').replaceAll('\\', '/'),
-        );
-        if (!filePath.startsWith(path.resolve(unpacked) + path.sep) || !(await exists(filePath)))
-          throw Error('Missing or invalid release file: ' + line);
-      }
+      await require('./toc-files.cjs').validateFiles(content, dir, unpacked, flavor(root));
     }
     names = compatible;
     onProgress(90);
