@@ -2,7 +2,8 @@
 ## AllowLoadGameType: mainline, camelot
 ## Title: Astral Profiles
 ## Notes: Switch between desktop and handheld Ellesmere layouts.
-## Version: 1.0.0
+## Version: 1.1.0
 ## Dependencies: EllesmereUI
-## SavedVariables: AstralProfilesDB
+## OptionalDeps: EllesmereUIActionBars, ConsolePort_Bar
+## SavedVariables: AstralProfilesDB, AstralProfileMode
 Profiles.lua

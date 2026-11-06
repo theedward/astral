@@ -8,6 +8,7 @@ import engine from '../desktop/engine.cjs';
 import settings from '../desktop/settings.cjs';
 import profiles from '../desktop/local-profiles.cjs';
 import selections from '../desktop/addon-selection.cjs';
+import catalog from '../desktop/catalog.cjs';
 async function fixture(t, parent) {
   const temp = parent || (await fs.mkdtemp(path.join(os.tmpdir(), 'astral-profile-')));
   if (!parent) t.after(() => fs.rm(temp, { recursive: true, force: true }));
@@ -21,7 +22,14 @@ async function fixture(t, parent) {
   await addon(root, 'KeyUI');
   await fs.writeFile(path.join(base, 'SavedVariables', 'KeyUI.lua'), 'regular settings');
   await fs.writeFile(path.join(base, 'bindings-cache.wtf'), 'regular bindings');
-  return { temp, root, data, account, base, running: async () => false };
+  const installPackages = async ({ plan, afterInstall }) => {
+    for (const item of plan.queue) {
+      const def = catalog.find((a) => a.id === item.id);
+      for (const folder of def.folders || [def.folder]) await addon(root, folder);
+      await afterInstall();
+    }
+  };
+  return { temp, root, data, account, base, running: async () => false, installPackages };
 }
 async function addon(root, name, extra = '') {
   const dir = path.join(root, 'Interface', 'AddOns', name);
@@ -50,11 +58,11 @@ test('local profiles round-trip UI, bindings, character overrides and newly inst
   );
   await change(f, 'regular', 'handheld');
   await addon(f.root, 'ConsolePort');
-  await change(f, 'handheld', 'handheld', { 'local:ConsolePort': true, keyui: false });
+  await change(f, 'handheld', 'handheld', { consoleport: true, keyui: false });
   await fs.writeFile(path.join(f.base, 'SavedVariables', 'KeyUI.lua'), 'handheld settings');
   await fs.writeFile(path.join(f.base, 'bindings-cache.wtf'), 'handheld bindings');
   const plan = await change(f, 'handheld', 'regular');
-  assert.ok(plan.changes.some((a) => a.id === 'local:ConsolePort' && a.enabled === false));
+  assert.ok(plan.changes.some((a) => a.id === 'consoleport' && a.enabled === false));
   assert.equal(
     await fs.readFile(path.join(f.base, 'bindings-cache.wtf'), 'utf8'),
     'regular bindings',

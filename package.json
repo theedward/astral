@@ -1,6 +1,6 @@
 {
   "name": "astral-companion",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -38,7 +38,8 @@
       "dist/**/*",
       "desktop/**/*",
       "package.json",
-      "assets/**/*"
+      "assets/**/*",
+      "addons/**/*"
     ],
     "mac": {
       "category": "public.app-category.utilities",

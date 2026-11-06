@@ -7,6 +7,7 @@ const context = (config) =>
       'root',
       'account',
       'lastHash',
+      'lastRemoteHash',
       'lastSync',
       'syncRevision',
       'syncProfile',
@@ -40,6 +41,7 @@ async function select(
     root: target,
     account: null,
     lastHash: null,
+    lastRemoteHash: null,
     lastSync: null,
     syncRevision: 0,
     syncProfile: undefined,
@@ -54,6 +56,7 @@ function resetSync(config) {
   const reset = (value) => ({
     ...value,
     lastHash: null,
+    lastRemoteHash: null,
     lastSync: null,
     syncRevision: 0,
     syncProfilePending: true,

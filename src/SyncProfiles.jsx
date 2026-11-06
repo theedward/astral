@@ -108,6 +108,22 @@ export default function SyncProfiles({ s, busy, call }) {
           ))}
         </select>
       </label>
+      {active === 'handheld' && s.account && (
+        <button
+          className="text-button"
+          disabled={busy || s.running}
+          onClick={async () => {
+            const result = await call('previewProfile', 'handheld');
+            if (result)
+              setPlan({
+                ...result,
+                name: options.find((p) => p.id === 'handheld')?.name || 'Handheld',
+              });
+          }}
+        >
+          Review Handheld setup
+        </button>
+      )}
       {!s.account && (
         <p className="control-hint">Open WoW once, then close it to set up profiles.</p>
       )}

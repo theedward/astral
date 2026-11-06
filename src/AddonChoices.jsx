@@ -31,12 +31,19 @@ export default function AddonChoices({ s, busy, call, notify }) {
           {s.running && <p>Close WoW before changing addon choices.</p>}
           <div className="profile-addon-list">
             {rows.map((addon) => {
+              const managed =
+                addon.id === 'consoleport' &&
+                ['regular', 'handheld'].includes(s.syncProfile || 'regular');
               const value = Object.hasOwn(edits, addon.id) ? edits[addon.id] : addon.enabled;
               return (
                 <label className="profile-addon-row" key={addon.id}>
                   <span>
                     {addon.name}
-                    {value === null && <small>Varies by character</small>}
+                    {managed ? (
+                      <small>Enabled in Handheld only</small>
+                    ) : (
+                      value === null && <small>Varies by character</small>
+                    )}
                   </span>
                   <input
                     type="checkbox"
@@ -46,7 +53,7 @@ export default function AddonChoices({ s, busy, call, notify }) {
                     ref={(node) => {
                       if (node) node.indeterminate = value === null;
                     }}
-                    disabled={busy || s.running}
+                    disabled={busy || s.running || managed}
                     onChange={(event) => {
                       const next = { ...edits };
                       if (event.target.checked === addon.enabled) delete next[addon.id];

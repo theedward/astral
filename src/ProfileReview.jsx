@@ -20,6 +20,21 @@ export default function ProfileReview({ plan, name, busy, onClose, onApply }) {
           {plan.changedSettings.length} UI or binding files will change. Your current setup is saved
           before applying.
         </p>
+        {plan.packages?.length > 0 && (
+          <p>Install: {plan.packages.map((a) => a.name).join(', ')}.</p>
+        )}
+        {plan.handheld && (
+          <p>
+            {plan.handheld === 'retail'
+              ? 'ConsolePort will be enabled and the four desktop action bars hidden.'
+              : 'The four desktop action bars will be hidden. The native controller HUD stays visible.'}
+          </p>
+        )}
+        {plan.missing?.length > 0 && (
+          <p role="alert">
+            Connect or install first: {plan.missing.map((a) => a.name).join(', ')}.
+          </p>
+        )}
         {plan.changes.length > 0 ? (
           <div className="control-list">
             {plan.changes.map((addon) => (
@@ -32,7 +47,11 @@ export default function ProfileReview({ plan, name, busy, onClose, onApply }) {
             ))}
           </div>
         ) : (
-          <p>Addon choices stay the same.</p>
+          <p>
+            {plan.packages?.length
+              ? 'Existing addon choices stay the same.'
+              : 'Addon choices stay the same.'}
+          </p>
         )}
         {plan.changedSettings.length > 0 && (
           <details>
@@ -48,7 +67,11 @@ export default function ProfileReview({ plan, name, busy, onClose, onApply }) {
           <button className="button secondary" disabled={busy} onClick={onClose}>
             Cancel
           </button>
-          <button className="button primary" disabled={busy} onClick={onApply}>
+          <button
+            className="button primary"
+            disabled={busy || !!plan.missing?.length}
+            onClick={onApply}
+          >
             {name ? 'Save and switch' : 'Apply choices'}
           </button>
         </div>

@@ -143,13 +143,19 @@ async function inventory(root, data) {
     groups.push({
       ...item,
       installed: true,
-      canImport: !item.local && allowedFlavor(item, flavor(root)),
+      canImport: !item.local && !item.bundled && allowedFlavor(item, flavor(root)),
       version: meta.Version || 'Unknown',
       author: meta.Author || '',
       icon: await addonIcon(root, meta.IconTexture),
       modules: family,
-      source: item.repo ? 'GitHub' : item.local ? 'Local development' : 'Manual',
-      status: item.repo ? 'unchecked' : item.local ? 'local' : 'manual',
+      source: item.bundled
+        ? 'Astral'
+        : item.repo
+          ? 'GitHub'
+          : item.local
+            ? 'Local development'
+            : 'Manual',
+      status: item.repo || item.bundled ? 'unchecked' : item.local ? 'local' : 'manual',
     });
   }
   for (const name of folders.filter((f) => !claimed.has(f))) {
@@ -174,6 +180,7 @@ async function inventory(root, data) {
   return { addons: groups, folderCount: folders.length };
 }
 async function getRelease(addon, data, force = false) {
+  if (addon.bundled) return require('./bundled.cjs').release(addon);
   if (!addon.repo) throw Error('Automatic downloads are not connected for this source.');
   const file = path.join(data, 'releases', addon.id + '.json');
   const cached = await json(file, null);
@@ -368,10 +375,13 @@ async function install(addon, root, data, release, onProgress = () => {}, option
   try {
     temp = await fs.mkdtemp(path.join(root, 'Interface', '.astral-'));
     const archive = path.join(temp, 'release.zip');
-    await (options.download || download)(release, archive, onProgress);
     const unpacked = path.join(temp, 'unpacked');
-    const allowed = (n) => allowedFolder(addon, n);
-    await unzip(archive, unpacked, allowed);
+    if (addon.bundled) {
+      await require('./bundled.cjs').prepare(addon, unpacked);
+    } else {
+      await (options.download || download)(release, archive, onProgress);
+      await unzip(archive, unpacked, (n) => allowedFolder(addon, n));
+    }
     let names = (await fs.readdir(unpacked, { withFileTypes: true }))
       .filter((e) => e.isDirectory())
       .map((e) => e.name);
@@ -498,7 +508,7 @@ async function install(addon, root, data, release, onProgress = () => {}, option
 }
 async function importZip(id, root, data, archive, onProgress = () => {}, options = {}) {
   const source = (await definitions(root, data)).find((a) => a.id === id);
-  if (!source || source.local)
+  if (!source || source.local || source.bundled)
     throw Error('ZIP updates are available for supported third-party addons.');
   if (!allowedFlavor(source, flavor(root)))
     throw Error('This addon is not supported for the selected game client.');

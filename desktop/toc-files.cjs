@@ -1,8 +1,9 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
+// WoW's text locale uses enUS for both English regions. Do not require a
+// separate enGB file when expanding the native [TextLocale] placeholder.
 const locales = [
   'enUS',
-  'enGB',
   'deDE',
   'esES',
   'esMX',
@@ -32,7 +33,8 @@ async function validateFiles(content, directory, packageRoot, client) {
     const filename = line
       .replace(/(?:\s*\[(?:Allow|Exclude)Load(?:GameType|TextLocale)\s+[^\]]+\])+\s*$/, '')
       .trim()
-      .replaceAll('\\', '/');
+      .replaceAll('\\', '/')
+      .replaceAll('[Family]', client === 'retail' ? 'Mainline' : 'Classic');
     const locale = conditions.find((condition) => condition[1] === 'AllowLoadTextLocale');
     let variants = filename.includes('[TextLocale]')
       ? locale

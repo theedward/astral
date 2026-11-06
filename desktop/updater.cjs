@@ -25,7 +25,12 @@ async function run({
     const type = flavor(root),
       inv = await api.inventory(root, data);
     for (const addon of inv.addons) {
-      if (!addon.repo || !allowed(addon, type) || ignored[type]?.includes(addon.id)) continue;
+      if (
+        (!addon.repo && !addon.bundled) ||
+        !allowed(addon, type) ||
+        ignored[type]?.includes(addon.id)
+      )
+        continue;
       if (legacyRio && addon.id === 'rio') {
         report.results.push({
           id: addon.id,

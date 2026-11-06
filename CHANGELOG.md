@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.0
+
+- Automatically share and install supported addon packages for Retail and Forever, across Regular and Handheld profiles and both installed clients.
+- Keep per-profile addon choices, UI settings, bindings and controller CVars separate. Graphics and display settings stay local.
+- Set up Retail Handheld with ConsolePort and hide the four desktop action bars; Regular disables ConsolePort and restores its own setup.
+- Hide only desktop bars in Forever Handheld, preserving its native controller HUD.
+- Include Astral Profiles, Clock and Forever Style packages in Astral, with normal installation backups and update handling.
+- Report missing sources and defer settings when a required package cannot be installed. Handle WoW locale and client-family file placeholders used by ConsolePort.
+
 ## 0.7.0
 
 - Choose which installed addons run in each profile from Profiles & sync, including while signed out.

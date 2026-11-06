@@ -40,7 +40,7 @@ import astralMark from '../assets/icon.png';
 import wowRetailIcon from '../assets/games/wow-retail.png';
 import wowForeverIcon from '../assets/games/wow-forever.png';
 function AddonIcon({ addon, large = false }) {
-  const artwork = addon.icon || (addon.local ? astralMark : null);
+  const artwork = addon.icon || (addon.local || addon.bundled ? astralMark : null);
   return (
     <span
       className={
@@ -128,7 +128,8 @@ function App() {
     setSelected((current) => (current ? s.addons.find((a) => a.id === current.id) || null : null));
   }, [s.addons]);
   const search = useRef(null),
-    toastTimer = useRef(null);
+    toastTimer = useRef(null),
+    lastAutomaticSyncIssue = useRef(null);
   const notify = (message, error = false) => {
     setToast({ message, error });
     clearTimeout(toastTimer.current);
@@ -145,7 +146,9 @@ function App() {
       const r = await api[name](...args);
       if (r?.addons) setS(r);
       if (name === 'snapshot') setSnapshot(r);
-      if (name === 'sync' && r?.conflict) setDialog(r);
+      if (name === 'sync' && (r?.conflict || r?.incomplete)) setDialog(r);
+      if (r?.incomplete && r.state) setS(r.state);
+      if (r?.syncMessage) notify(r.syncMessage);
       return r;
     } catch (e) {
       const message = e.message.replace(/^Error invoking remote method '[^']+': Error: /, '');
@@ -175,10 +178,22 @@ function App() {
           api
             .sync('auto')
             .then((r) => {
-              if (r.conflict) {
+              if (r.conflict || r.incomplete) {
+                const signature = JSON.stringify([r.scope, r.revision, r.missing]);
+                if (r.state) setS(r.state);
+                if (signature === lastAutomaticSyncIssue.current) return;
+                lastAutomaticSyncIssue.current = signature;
                 setDialog(r);
-                notify('Both setups changed. Choose which one to keep.', true);
-              } else setS(r);
+                notify(
+                  r.incomplete
+                    ? 'Some addons need a connected source. Your current setup was kept.'
+                    : 'Both setups changed. Choose which one to keep.',
+                  true,
+                );
+              } else {
+                lastAutomaticSyncIssue.current = null;
+                setS(r);
+              }
             })
             .catch((e) => notify(e.message, true));
       });
@@ -612,19 +627,21 @@ function App() {
                         <span className="source-cell">
                           {a.repo ? (
                             <ProviderMark name="GitHub" small />
-                          ) : a.local ? (
+                          ) : a.local || a.bundled ? (
                             <HardDrive size={12} />
                           ) : (
                             <Globe size={12} />
                           )}{' '}
-                          <span title={a.repo || undefined}>{a.local ? 'Astral' : a.source}</span>
+                          <span title={a.repo || undefined}>
+                            {a.local || a.bundled ? 'Astral' : a.source}
+                          </span>
                         </span>
                         <span className="version" title={a.version}>
                           {a.id === 'rio'
                             ? (a.version.match(/v\d{12}/) || [a.version])[0]
                             : a.version}
                         </span>
-                        {a.repo && (
+                        {(a.repo || a.bundled) && (
                           <span className={'status-label ' + a.status}>
                             {a.release?.error ? (
                               <>
@@ -1050,7 +1067,7 @@ function App() {
               <span>Installed version</span>
               <strong>{selected.version}</strong>
               <span>Source</span>
-              <strong>{selected.local ? 'Astral' : selected.source}</strong>
+              <strong>{selected.local || selected.bundled ? 'Astral' : selected.source}</strong>
               {selected.release?.tag && (
                 <>
                   <span>Latest release</span>
@@ -1066,7 +1083,7 @@ function App() {
                 Last attempt failed: {selectedFailure.message}
               </div>
             )}
-            {selected.repo && (
+            {(selected.repo || selected.bundled) && (
               <label className="addon-auto-toggle">
                 Include in daily updates
                 <input
@@ -1077,7 +1094,7 @@ function App() {
                 />
               </label>
             )}
-            {selected.repo && (
+            {(selected.repo || selected.bundled) && (
               <button
                 className="button primary full"
                 disabled={busy || (s.running && selected.status === 'update')}
@@ -1107,13 +1124,15 @@ function App() {
                 <History size={15} />
               </button>
             )}
-            <button
-              className="button secondary full"
-              onClick={() => call('openSource', selected.id)}
-            >
-              {selected.repo ? 'View on GitHub' : 'Download page'}
-              <ExternalLink size={14} />
-            </button>
+            {!selected.bundled && (
+              <button
+                className="button secondary full"
+                onClick={() => call('openSource', selected.id)}
+              >
+                {selected.repo ? 'View on GitHub' : 'Download page'}
+                <ExternalLink size={14} />
+              </button>
+            )}
             {selected.status === 'manual' && (
               <div className="drawer-note">
                 {selected.canImport
@@ -1171,6 +1190,33 @@ function App() {
                     <ArrowRight size={15} />
                   </button>
                 ))}
+              </>
+            ) : dialog?.incomplete ? (
+              <>
+                <Package size={26} />
+                <h2>Some addons need a source</h2>
+                <p>
+                  Your current UI and bindings were kept. Install these addons, then sync again.
+                </p>
+                <div className="control-list">
+                  {dialog.missing.map((addon) => (
+                    <div className="control-row" key={addon.folder}>
+                      <strong>{addon.name}</strong>
+                      <span>{addon.reason}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="modal-actions">
+                  <button
+                    className="button primary"
+                    onClick={() => {
+                      setDialog(null);
+                      navigate('Your setup');
+                    }}
+                  >
+                    View shared addons
+                  </button>
+                </div>
               </>
             ) : dialog?.conflict ? (
               <>

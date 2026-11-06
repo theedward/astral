@@ -2007,3 +2007,7 @@ input[type='checkbox'] {
   overflow-wrap: anywhere;
   font-size: 12px;
 }
+
+.editorial .modal > svg {
+  color: var(--accent);
+}

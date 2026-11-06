@@ -419,3 +419,47 @@ test('release file lists respect exclusion annotations for the selected client',
     /Missing or invalid release file/,
   );
 });
+
+test('native text-locale expansion accepts the eleven packaged locales without a separate enGB file', async (t) => {
+  const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'astral-text-locale-'));
+  t.after(() => fs.rm(temp, { recursive: true, force: true }));
+  const dir = path.join(temp, 'Addon', 'Locale');
+  await fs.mkdir(dir, { recursive: true });
+  for (const locale of [
+    'enUS',
+    'deDE',
+    'esES',
+    'esMX',
+    'frFR',
+    'itIT',
+    'koKR',
+    'ptBR',
+    'ruRU',
+    'zhCN',
+    'zhTW',
+  ])
+    await fs.writeFile(path.join(dir, locale + '.lua'), '-- locale');
+  const { validateFiles } = await import('../desktop/toc-files.cjs');
+  await validateFiles('Locale\\[TextLocale].lua', path.dirname(dir), temp, 'retail');
+  await fs.rm(path.join(dir, 'deDE.lua'));
+  await assert.rejects(
+    validateFiles('Locale\\[TextLocale].lua', path.dirname(dir), temp, 'retail'),
+    /Missing or invalid/,
+  );
+});
+
+test('native Family file placeholders validate only the selected client family', async (t) => {
+  const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'astral-family-'));
+  t.after(() => fs.rm(temp, { recursive: true, force: true }));
+  const dir = path.join(temp, 'Addon');
+  await fs.mkdir(dir);
+  await fs.writeFile(path.join(dir, 'AurasMainline.lua'), '-- retail');
+  const { validateFiles } = await import('../desktop/toc-files.cjs');
+  await validateFiles('Auras[Family].lua', dir, temp, 'retail');
+  await assert.rejects(
+    validateFiles('Auras[Family].lua', dir, temp, 'forever'),
+    /Missing or invalid/,
+  );
+  await fs.writeFile(path.join(dir, 'AurasClassic.lua'), '-- classic');
+  await validateFiles('Auras[Family].lua', dir, temp, 'forever');
+});

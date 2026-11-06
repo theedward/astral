@@ -5,6 +5,8 @@ const fs = require('node:fs/promises');
 const engine = require('./engine.cjs');
 const settings = require('./settings.cjs');
 const selection = require('./addon-selection.cjs');
+const policy = require('./profile-policy.cjs');
+const packages = require('./library-sync.cjs');
 const validId = (id) => typeof id === 'string' && /^(regular|handheld|[a-f0-9]{32})$/.test(id);
 function location(data, root, account, id) {
   if (!validId(id)) throw Error('Unknown profile.');
@@ -28,10 +30,10 @@ async function prepare({ data, root, account, from, to, edits = {} }) {
   if (!validId(from) || !validId(to)) throw Error('Unknown profile.');
   if (!edits || typeof edits !== 'object' || Array.isArray(edits))
     throw Error('Invalid addon choices.');
-  const current = await settings.capture(root, account);
+  const current = await settings.capture(root, account, data);
   const saved = from === to ? current : await read(data, root, account, to);
   let target = saved || current;
-  const bundle = settings.decode(target.payload);
+  let bundle = settings.decode(target.payload);
   const inventory = await engine.inventory(root, data);
   if (Object.keys(edits).length) {
     bundle.schema = 2;
@@ -42,6 +44,18 @@ async function prepare({ data, root, account, from, to, edits = {} }) {
     );
     target = encode(bundle);
   }
+  bundle = policy.apply(bundle, {
+    root,
+    profile: to,
+    inventory,
+    currentInput: settings.decode(current.payload).input,
+  });
+  target = encode(bundle);
+  const packagePlan = await packages.plan({
+    root,
+    data,
+    target: packages.required(bundle.library || [], bundle.addonSelection),
+  });
   const base = await settings.accountRoot(root, account);
   if (bundle.addonSelection) await selection.plan(root, base, bundle.addonSelection);
   const before = selection.rows(settings.decode(current.payload).addonSelection, inventory.addons);
@@ -58,6 +72,8 @@ async function prepare({ data, root, account, from, to, edits = {} }) {
   const changedSettings = bundle.files
     .filter((file) => oldFiles.get(file.path) !== file.sha256)
     .map((file) => file.path);
+  if (JSON.stringify(bundle.input) !== JSON.stringify(settings.decode(current.payload).input))
+    changedSettings.push('Controller settings');
   const fingerprint = crypto
     .createHash('sha256')
     .update(
@@ -72,6 +88,7 @@ async function prepare({ data, root, account, from, to, edits = {} }) {
     fingerprint,
     current,
     target,
+    packages: packagePlan,
     initialized: !saved,
     changes,
     changedSettings,
@@ -88,16 +105,41 @@ async function apply({
   expected,
   running,
   commit = async () => {},
+  onProgress = () => {},
+  installPackages = packages.install,
 }) {
   if (await running()) throw Error('Close WoW before changing profiles.');
   const plan = await prepare({ data, root, account, from, to, edits });
   if (plan.fingerprint !== expected) throw Error('The setup changed. Review the profile again.');
+  if (plan.packages.manual.length)
+    throw Error(
+      'Install or connect these addons before switching: ' +
+        plan.packages.manual.map((a) => a.name).join(', '),
+    );
   const sourceFile = location(data, root, account, from),
     targetFile = location(data, root, account, to);
   const previousTarget = await fs.readFile(targetFile).catch(() => null);
   await engine.save(sourceFile, plan.current);
   let applied = false;
   try {
+    await installPackages({
+      root,
+      data,
+      plan: plan.packages,
+      onProgress,
+      afterInstall: () =>
+        settings.apply(
+          root,
+          account,
+          encode({
+            schema: 2,
+            files: [],
+            addonSelection: settings.decode(plan.current.payload).addonSelection,
+          }).payload,
+          data,
+          running,
+        ),
+    });
     await settings.apply(root, account, plan.target.payload, data, running);
     applied = true;
     await engine.save(targetFile, plan.target);

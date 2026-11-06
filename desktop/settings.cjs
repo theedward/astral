@@ -4,6 +4,8 @@ const fs = require('node:fs/promises'),
   zlib = require('node:zlib');
 const { exists, save, catalog } = require('./engine.cjs');
 const selections = require('./addon-selection.cjs');
+const library = require('./library-sync.cjs');
+const gamepad = require('./gamepad-settings.cjs');
 const names = new Set(catalog.flatMap((a) => a.folders || [a.folder]));
 const layoutNames = new Set([
   'bindings-cache.wtf',
@@ -43,7 +45,7 @@ async function accountRoot(root, account) {
     throw Error('The selected WoW account was not found.');
   return dir;
 }
-async function capture(root, account) {
+async function capture(root, account, data) {
   const base = await accountRoot(root, account),
     files = [];
   async function walk(dir, prefix = '', depth = 0) {
@@ -68,7 +70,13 @@ async function capture(root, account) {
   await walk(base);
   files.sort((a, b) => a.path.localeCompare(b.path));
   const addonSelection = await selections.capture(root, base);
-  const payload = JSON.stringify({ schema: 2, files, addonSelection });
+  const payload = JSON.stringify({
+    schema: 2,
+    files,
+    addonSelection,
+    library: await library.installed(root, data),
+    input: gamepad.parse(await gamepad.read(root)),
+  });
   const raw = Buffer.from(payload);
   if (raw.length > 24 * 1024 ** 2) throw Error('This setup exceeds the 24 MB preview limit.');
   return {
@@ -85,6 +93,14 @@ function decode(payload) {
     throw Error('Unsupported settings format.');
   if (bundle.schema === 2) selections.validate(bundle.addonSelection);
   else if (bundle.addonSelection !== undefined) throw Error('Unsupported settings format.');
+  if (bundle.library !== undefined) {
+    if (bundle.schema !== 2) throw Error('Unsupported settings format.');
+    library.validate(bundle.library);
+  }
+  if (bundle.input !== undefined) {
+    if (bundle.schema !== 2) throw Error('Unsupported settings format.');
+    gamepad.validate(bundle.input);
+  }
   const seen = new Set();
   for (const f of bundle.files) {
     if (
@@ -106,18 +122,32 @@ async function apply(root, account, payload, data, running) {
   if (await running()) throw Error('Close WoW before applying settings.');
   const base = await accountRoot(root, account);
   const files = [
-    ...bundle.files,
+    ...bundle.files.map(({ path, content }) => ({ path, content })),
     ...(bundle.schema === 2 ? await selections.plan(root, base, bundle.addonSelection) : []),
   ];
+  if (bundle.input !== undefined) {
+    const text = await gamepad.read(root);
+    const content = gamepad.render(text, bundle.input);
+    if (text !== content)
+      files.push({
+        path: '@installation/Config.wtf',
+        installation: true,
+        content: Buffer.from(content).toString('base64'),
+      });
+  }
   const backup = path.join(data, 'settings-backups', Date.now() + '-' + crypto.randomUUID());
   await fs.mkdir(backup, { recursive: true });
   const changed = [];
   try {
     for (const f of files) {
       if (await running()) throw Error('WoW started. Settings change cancelled.');
-      const dest = path.join(base, ...f.path.split('/'));
-      let current = base;
-      for (const part of f.path.split('/')) {
+      const parent = f.installation ? path.join(root, 'WTF') : base;
+      const parts = f.installation ? ['Config.wtf'] : f.path.split('/');
+      const dest = path.join(parent, ...parts);
+      let current = parent;
+      if ((await fs.lstat(parent)).isSymbolicLink())
+        throw Error('Settings paths cannot contain links.');
+      for (const part of parts) {
         current = path.join(current, part);
         if ((await fs.lstat(current).catch(() => null))?.isSymbolicLink())
           throw Error('Settings paths cannot contain links.');
@@ -128,7 +158,7 @@ async function apply(root, account, payload, data, running) {
         await fs.mkdir(path.dirname(bp), { recursive: true });
         await fs.copyFile(dest, bp);
       }
-      changed.push({ path: f.path, had });
+      changed.push({ path: f.path, had, installation: !!f.installation });
       await fs.mkdir(path.dirname(dest), { recursive: true });
       const tmp = dest + '.astral-' + crypto.randomUUID() + '.tmp';
       try {
@@ -146,7 +176,9 @@ async function apply(root, account, payload, data, running) {
     return files.length;
   } catch (e) {
     for (const f of changed.reverse()) {
-      const dest = path.join(base, ...f.path.split('/'));
+      const dest = f.installation
+        ? path.join(root, 'WTF', 'Config.wtf')
+        : path.join(base, ...f.path.split('/'));
       if (f.had) await fs.copyFile(path.join(backup, ...f.path.split('/')), dest);
       else await fs.rm(dest, { force: true });
     }

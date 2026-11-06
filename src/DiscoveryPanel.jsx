@@ -47,7 +47,9 @@ export default function DiscoveryPanel({ s, busy, call, notify, AddonIcon, onLib
   );
   const ids = new Set(known.map((a) => a.repo?.toLowerCase()).filter(Boolean));
   const list = [...known, ...results.filter((a) => !ids.has(a.repo?.toLowerCase()))].filter(
-    (a) => source === 'all' || (source === 'github' ? !!a.repo : !a.repo),
+    (a) =>
+      source === 'all' ||
+      (source === 'github' ? !!a.repo : source === 'astral' ? !!a.bundled : !a.repo && !a.bundled),
   );
   const open = async (a) => {
     setPreview(null);
@@ -133,6 +135,7 @@ export default function DiscoveryPanel({ s, busy, call, notify, AddonIcon, onLib
           >
             <option value="all">All sources</option>
             <option value="github">GitHub</option>
+            <option value="astral">Astral</option>
             <option value="manual">Manual sources</option>
           </select>
         </label>
@@ -168,6 +171,14 @@ export default function DiscoveryPanel({ s, busy, call, notify, AddonIcon, onLib
                     </button>
                   )}
                 </>
+              ) : a.bundled ? (
+                <button
+                  className="button secondary"
+                  disabled={busy || s.running}
+                  onClick={() => call('update', a.id)}
+                >
+                  Install
+                </button>
               ) : a.repo ? (
                 <button className="button secondary" disabled={busy} onClick={() => open(a)}>
                   Review release <ArrowRight size={13} />

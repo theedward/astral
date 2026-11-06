@@ -22,6 +22,9 @@ const scheduler = require('./scheduler.cjs');
 const addonActivity = require('./addon-activity.cjs');
 const suites = require('./suites.cjs');
 const localProfiles = require('./local-profiles.cjs');
+const setupSync = require('./sync.cjs');
+const syncedPackages = require('./library-sync.cjs');
+const profilePolicy = require('./profile-policy.cjs');
 const addonSelection = require('./addon-selection.cjs');
 const profilePreviews = new Map();
 const clients = require('./clients.cjs');
@@ -420,7 +423,7 @@ async function main() {
     return shell.openExternal('https://github.com/' + repo + '/releases');
   });
   handle('cloudInfo', async () => request('/cloud/' + syncScope()));
-  const libraryPath = () => '/profiles/' + syncScope() + '/library';
+  const libraryPath = () => '/profiles/' + flavors.flavor(config.root) + '/library';
   handle('sharedLibrary', () => request(libraryPath()));
   handle('shareLibrary', async (revision) => {
     if (!(await engine.exists(path.join(config.root, 'Interface', 'AddOns'))))
@@ -491,6 +494,9 @@ async function main() {
       initialized: plan.initialized,
       changes: plan.changes,
       changedSettings: plan.changedSettings,
+      packages: plan.packages.queue,
+      handheld: value === 'handheld' ? flavors.flavor(config.root) : null,
+      missing: plan.packages.manual,
     };
   });
   handle('applyProfile', async (token) => {
@@ -509,12 +515,14 @@ async function main() {
       data,
       ...preview,
       expected: preview.fingerprint,
+      onProgress: send,
       running: engine.gameRunning,
       commit: async () => {
         if (preview.to !== preview.from) {
           config.syncProfile = preview.to;
           config.syncProfilePending = true;
           config.lastHash = null;
+          config.lastRemoteHash = null;
           config.lastSync = null;
           config.syncRevision = 0;
         }
@@ -550,14 +558,51 @@ async function main() {
     const verified = settings.inspect(old.payload);
     if (old.hash && old.hash !== verified.hash)
       throw Error('The cloud backup checksum does not match.');
+    const current = settings.decode((await settings.capture(root, account, data)).payload);
+    const target = profilePolicy.apply(settings.decode(old.payload), {
+      root,
+      profile: syncProfile(),
+      inventory: await engine.inventory(root, data),
+      currentInput: current.input,
+    });
+    const plan = await syncedPackages.plan({
+      root,
+      data,
+      target: syncedPackages.required(target.library || [], target.addonSelection),
+    });
+    if (plan.manual.length)
+      throw Error(
+        'Connect or install these addons before restoring: ' +
+          plan.manual.map((a) => a.name).join(', '),
+      );
+    const preserve = profilePolicy.encode({
+      schema: 2,
+      files: [],
+      addonSelection: current.addonSelection,
+    });
+    await syncedPackages.install({
+      root,
+      data,
+      plan,
+      onProgress: send,
+      afterInstall: () => settings.apply(root, account, preserve.payload, data, engine.gameRunning),
+    });
+    send({});
     if (await engine.gameRunning()) throw Error('WoW started. Restore deferred.');
     const result = await request('/profiles/' + type + '/history/' + id + '/restore', {
       method: 'POST',
       body: { revision, hash: verified.hash },
     });
-    await settings.apply(root, account, old.payload, data, engine.gameRunning);
+    await settings.apply(
+      root,
+      account,
+      profilePolicy.encode(target).payload,
+      data,
+      engine.gameRunning,
+    );
     config.syncProfilePending = false;
-    config.lastHash = verified.hash;
+    config.lastHash = (await settings.capture(root, account, data)).hash;
+    config.lastRemoteHash = verified.hash;
     config.syncRevision = result.revision;
     config.lastSync = new Date().toISOString();
     await persist();
@@ -631,7 +676,11 @@ async function main() {
     return state();
   });
   handle('autoIgnore', async (id, exclude) => {
-    if (!(await engine.definitions(config.root, data)).some((a) => a.id === id && a.repo))
+    if (
+      !(await engine.definitions(config.root, data)).some(
+        (a) => a.id === id && (a.repo || a.bundled),
+      )
+    )
       throw Error('Unknown connected addon.');
     const type = flavors.flavor(config.root);
     config.updateIgnored = config.updateIgnored || {};
@@ -661,7 +710,7 @@ async function main() {
   handle('check', async () => {
     const all = await engine.inventory(config.root, data);
     for (const [i, a] of all.addons
-      .filter((a) => a.repo && flavors.allowed(a, flavors.flavor(config.root)))
+      .filter((a) => (a.repo || a.bundled) && flavors.allowed(a, flavors.flavor(config.root)))
       .entries()) {
       send({
         kind: 'check',
@@ -680,7 +729,7 @@ async function main() {
   });
   handle('update', async (id) => {
     const a = (await engine.definitions(config.root, data)).find((a) => a.id === id);
-    if (!a?.repo) throw Error('This addon needs a connected official source.');
+    if (!a?.repo && !a?.bundled) throw Error('This addon needs a connected official source.');
     const inv = await engine.inventory(config.root, data);
     const addon = inv.addons.find((x) => x.id === id) || a;
     try {
@@ -779,13 +828,14 @@ async function main() {
     config.account = value;
     config.syncRevision = 0;
     config.lastHash = null;
+    config.lastRemoteHash = null;
     await persist();
     return state();
   });
   handle('snapshot', async () => {
     if (await engine.gameRunning())
       throw Error('Close WoW so its latest settings are saved first.');
-    const s = await settings.capture(config.root, config.account);
+    const s = await settings.capture(config.root, config.account, data);
     return { files: s.files, bytes: s.bytes, hash: s.hash };
   });
   handle('connect', async () => {
@@ -811,7 +861,7 @@ async function main() {
           token: await credentials.encrypt(result.token),
           name: result.name,
         });
-        if (!config.syncProfilePending && config.account && !(await engine.gameRunning()))
+        if (!config.syncProfilePending && !(await engine.gameRunning()))
           setTimeout(
             () =>
               send({ kind: 'sync-ready', message: 'Battle.net connected. Preparing your setup.' }),
@@ -828,48 +878,68 @@ async function main() {
       throw Error('The sync profile changed. Try again.');
     if (choice === 'auto' && config.syncProfilePending) return state();
     if (await engine.gameRunning()) throw Error('Settings sync waits until WoW is closed.');
-    const local = await settings.capture(config.root, config.account);
-    const remote = await request('/profiles/' + scope + '/current');
-    if (expectedRevision !== undefined && expectedRevision !== remote.revision)
-      throw Error('The cloud backup changed. Sync again to review it.');
-    if (choice === 'cloud' && !remote.revision) throw Error('No cloud backup is available.');
-    if (!local.files && !remote.revision)
-      throw Error('Log into WoW, then close it to save settings first.');
-    const action = flavors.syncAction(local, remote, config.lastHash, choice);
-    if (action === 'conflict')
-      return {
-        conflict: true,
+    try {
+      // Both installed clients share packages, even when the other is selected.
+      for (const type of ['retail', 'forever']) {
+        const otherRoot = path.join(
+          path.dirname(config.root),
+          type === 'retail' ? '_retail_' : '_forever_',
+        );
+        if (
+          otherRoot === config.root ||
+          !(await engine.exists(path.join(otherRoot, 'Interface', 'AddOns')))
+        )
+          continue;
+        const saved = config.spaces?.[type];
+        const accounts = await settings.accounts(otherRoot);
+        const account =
+          saved?.root === otherRoot && accounts.includes(saved.account)
+            ? saved.account
+            : accounts.length === 1
+              ? accounts[0]
+              : null;
+        const result = await setupSync.collection({
+          root: otherRoot,
+          account,
+          data,
+          request,
+          onProgress: send,
+        });
+        if (
+          saved?.root === otherRoot &&
+          saved.account === account &&
+          saved.lastHash === result.beforeHash
+        )
+          saved.lastHash = result.afterHash;
+      }
+      const result = await setupSync.run({
+        root: config.root,
+        account: config.account,
+        data,
         scope,
-        revision: remote.revision,
-        localFiles: local.files,
-        remoteTime: remote.updated,
-      };
-    if (action === 'download') {
-      if (remote.hash && settings.inspect(remote.payload).hash !== remote.hash)
-        throw Error('The cloud backup checksum does not match.');
-      await settings.apply(config.root, config.account, remote.payload, data, engine.gameRunning);
-      config.lastHash = remote.hash;
-      config.syncRevision = remote.revision;
-    } else if (action === 'upload') {
-      const r = await request('/profiles/' + scope + '/current', {
-        method: 'PUT',
-        body: {
-          payload: local.payload,
-          hash: local.hash,
-          files: local.files,
-          revision: remote.revision || 0,
-          device: config.device,
-        },
+        profile: syncProfile(),
+        lastHash: config.lastHash,
+        lastRemoteHash: config.lastRemoteHash,
+        choice,
+        expectedRevision,
+        device: config.device,
+        request,
+        onProgress: send,
       });
-      config.syncRevision = r.revision;
-      config.lastHash = local.hash;
-    } else {
-      config.syncRevision = remote.revision;
-      config.lastHash = local.hash;
+      if (result.conflict) return result;
+      if (result.incomplete) return { ...result, state: await state() };
+      if (result.libraryOnly)
+        return {
+          ...(await state()),
+          syncMessage:
+            'Addon collection shared. Open WoW once, then close it to sync this client’s settings.',
+        };
+      const { installed, ...updates } = result;
+      Object.assign(config, updates);
+      await persist();
+    } finally {
+      send({});
     }
-    config.syncProfilePending = false;
-    config.lastSync = new Date().toISOString();
-    await persist();
     return state();
   });
   handle('disconnect', async () => {
@@ -957,11 +1027,7 @@ async function main() {
   const appUpdateTimer = setInterval(checkApp, 3600000);
   appUpdateTimer.unref();
   setTimeout(checkApp, 10000).unref();
-  if (
-    config.account &&
-    (await engine.exists(path.join(data, 'session.json'))) &&
-    !(await engine.gameRunning())
-  )
+  if ((await engine.exists(path.join(data, 'session.json'))) && !(await engine.gameRunning()))
     setTimeout(() => signalSyncReady('Checking your connected setup.'), 750);
   // Device agent: includes the first upload after signing in while WoW is open.
   let wasRunning = await engine.gameRunning().catch(() => false);
@@ -969,7 +1035,7 @@ async function main() {
     try {
       const running = await engine.gameRunning();
       if (wasRunning !== running) win?.webContents.send('astral:changed');
-      if (wasRunning && !running && config.account) {
+      if (wasRunning && !running) {
         const s = await state();
         if (s.signedIn) await signalSyncReady('WoW closed. Your settings are ready to sync.');
       }
@@ -977,6 +1043,14 @@ async function main() {
     } catch {}
   }, 15000);
   timer.unref();
+  const syncTimer = setInterval(async () => {
+    if (taskActive || config.syncProfilePending) return;
+    try {
+      if ((await engine.exists(path.join(data, 'session.json'))) && !(await engine.gameRunning()))
+        await signalSyncReady('Checking your connected setup.');
+    } catch {}
+  }, 300000);
+  syncTimer.unref();
   const dailyTimer = setInterval(() => {
     if (!taskActive)
       daily().catch((e) => {
